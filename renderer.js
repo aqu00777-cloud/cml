@@ -43,10 +43,20 @@ window.onload = async () => {
                 const sources = await window.electronAPI.getSources();
                 const mainScreen = sources[0];
 
-                localScreenStream = await navigator.mediaDevices.getUserMedia({
-                    audio: false,
-                    video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: mainScreen.id } }
-                });
+                try {
+                    // Try to capture system audio + screen video
+                    localScreenStream = await navigator.mediaDevices.getUserMedia({
+                        audio: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: mainScreen.id } },
+                        video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: mainScreen.id } }
+                    });
+                } catch (audioErr) {
+                    console.error("System audio capture failed, falling back to video only.", audioErr);
+                    // Fallback to Video-Only if the system doesn't support loopback audio capture
+                    localScreenStream = await navigator.mediaDevices.getUserMedia({
+                        audio: false,
+                        video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: mainScreen.id } }
+                    });
+                }
 
                 setupWebRTC(adminId, localScreenStream);
             } catch (e) {
