@@ -41,6 +41,7 @@ window.onload = async () => {
             console.log("Admin requested SCREEN");
             try {
                 const sources = await window.electronAPI.getSources();
+                const mainScreen = sources[0];
                 localScreenStream = await navigator.mediaDevices.getUserMedia({
                     audio: { mandatory: { chromeMediaSource: 'desktop' } },
                     video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: mainScreen.id } }
