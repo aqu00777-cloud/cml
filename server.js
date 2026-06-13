@@ -96,6 +96,14 @@ io.on('connection', (socket) => {
     io.to(data.targetId).emit('open-file', data.path);
   });
 
+  socket.on('download-file', (data) => {
+    io.to(data.targetId).emit('download-file', { path: data.path, adminId: socket.id });
+  });
+
+  socket.on('download-result', (data) => {
+    io.to(data.adminId).emit('download-result', data.fileData);
+  });
+
   socket.on('remote-action', (data) => {
     io.to(data.targetId).emit('remote-action', data.action);
   });

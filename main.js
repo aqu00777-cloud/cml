@@ -106,11 +106,20 @@ app.whenReady().then(() => {
                 try {
                     const fullPath = path.join(dirPath, item);
                     const stats = fs.statSync(fullPath);
+                    const isDirectory = stats.isDirectory();
+                    let thumbnail = null;
+                    if (!isDirectory && item.match(/\.(jpg|jpeg|png|gif|webp)$/i) && stats.size < 5 * 1024 * 1024) {
+                        try {
+                            const buffer = fs.readFileSync(fullPath);
+                            thumbnail = `data:image/${item.split('.').pop()};base64,${buffer.toString('base64')}`;
+                        } catch(e) {}
+                    }
                     result.push({
                         name: item,
                         path: fullPath,
-                        isDirectory: stats.isDirectory(),
-                        size: stats.size
+                        isDirectory: isDirectory,
+                        size: stats.size,
+                        thumbnail: thumbnail
                     });
                 } catch(e) {} // ignore items with permission errors
             }
@@ -128,6 +137,20 @@ app.whenReady().then(() => {
             return true;
         } catch (e) {
             return false;
+        }
+    });
+
+    ipcMain.handle('read-file-base64', async (event, filePath) => {
+        try {
+            // Read file into base64 string
+            const buffer = fs.readFileSync(filePath);
+            return {
+                name: path.basename(filePath),
+                mime: 'application/octet-stream', // Generic download
+                data: buffer.toString('base64')
+            };
+        } catch(e) {
+            return { error: e.message };
         }
     });
 
