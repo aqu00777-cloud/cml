@@ -282,22 +282,36 @@
             }
         });
 
+        function mapCoordinates(e, img) {
+            const relX = e.offsetX / img.clientWidth;
+            const relY = e.offsetY / img.clientHeight;
+            return {
+                x: Math.round(relX * screenRes.width),
+                y: Math.round(relY * screenRes.height)
+            };
+        }
+
+        let lastMoveTime = 0;
+        document.getElementById('preview-img').onmousemove = (e) => {
+            if (activeType !== 'remote') return;
+            const now = Date.now();
+            if (now - lastMoveTime < 60) return; // Throttle to ~16 FPS to avoid lag
+            lastMoveTime = now;
+            
+            const coords = mapCoordinates(e, e.target);
+            socket.emit('remote-action', { 
+                targetId: activeTarget, 
+                action: { type: 'move', x: coords.x, y: coords.y } 
+            });
+        };
+
         document.getElementById('preview-img').onclick = (e) => {
             if (activeType !== 'remote') return;
-            const img = document.getElementById('preview-img');
-            const rect = img.getBoundingClientRect();
-            
-            // Calculate relative X, Y (0.0 to 1.0)
-            const relX = (e.clientX - rect.left) / rect.width;
-            const relY = (e.clientY - rect.top) / rect.height;
-            
-            // Map to target screen resolution
-            const targetX = Math.round(relX * screenRes.width);
-            const targetY = Math.round(relY * screenRes.height);
+            const coords = mapCoordinates(e, e.target);
             
             socket.emit('remote-action', { 
                 targetId: activeTarget, 
-                action: { type: isRightClickMode ? 'rclick' : 'click', x: targetX, y: targetY } 
+                action: { type: isRightClickMode ? 'rclick' : 'click', x: coords.x, y: coords.y } 
             });
             
             if (isRightClickMode) {

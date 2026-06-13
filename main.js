@@ -45,6 +45,7 @@ Add-Type -MemberDefinition '
     [DllImport("user32.dll")] public static extern void mouse_event(int flags, int dx, int dy, int cButtons, int info);
     [DllImport("user32.dll")] public static extern bool SetCursorPos(int X, int Y);
 ' -Name NativeMethods -Namespace Win32
+function Move-Mouse { param($x, $y); [Win32.NativeMethods]::SetCursorPos($x, $y) | Out-Null }
 function Click-Left { param($x, $y); [Win32.NativeMethods]::SetCursorPos($x, $y) | Out-Null; [Win32.NativeMethods]::mouse_event(2, 0, 0, 0, 0); [Win32.NativeMethods]::mouse_event(4, 0, 0, 0, 0) }
 function Click-Right { param($x, $y); [Win32.NativeMethods]::SetCursorPos($x, $y) | Out-Null; [Win32.NativeMethods]::mouse_event(8, 0, 0, 0, 0); [Win32.NativeMethods]::mouse_event(16, 0, 0, 0, 0) }
 function Send-Text { param($txt); [System.Windows.Forms.SendKeys]::SendWait($txt) }
@@ -132,7 +133,9 @@ app.whenReady().then(() => {
     ipcMain.handle('remote-action', async (event, action) => {
         if (!psControl) setupRemoteControl();
         try {
-            if (action.type === 'click') {
+            if (action.type === 'move') {
+                psControl.stdin.write(`Move-Mouse ${Math.round(action.x)} ${Math.round(action.y)}\n`);
+            } else if (action.type === 'click') {
                 psControl.stdin.write(`Click-Left ${Math.round(action.x)} ${Math.round(action.y)}\n`);
             } else if (action.type === 'rclick') {
                 psControl.stdin.write(`Click-Right ${Math.round(action.x)} ${Math.round(action.y)}\n`);
