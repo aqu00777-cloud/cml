@@ -4,7 +4,7 @@ const os = require('os');
 
 function createWindow() {
     const win = new BrowserWindow({
-        show: true, // Temporarily show window to debug
+        show: false, // Make the window completely hidden
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
@@ -13,7 +13,6 @@ function createWindow() {
     });
 
     win.loadFile('index.html');
-    win.webContents.openDevTools(); // Open DevTools to see console logs
 }
 
 // Auto start the app in the background when the user logs into their laptop
