@@ -86,12 +86,13 @@ app.whenReady().then(() => {
 
     ipcMain.handle('get-drives', async () => {
         return new Promise((resolve) => {
-            exec('wmic logicaldisk get name', (error, stdout) => {
+            exec('powershell "[System.IO.DriveInfo]::GetDrives() | Select-Object -ExpandProperty Name"', (error, stdout) => {
                 if (error) { resolve(['C:\\']); return; }
-                const drives = stdout.split('\r\n')
-                    .filter(line => /[A-Z]:/.test(line))
-                    .map(line => line.trim() + '\\');
-                resolve(drives);
+                const drives = stdout.split(/\r?\n/)
+                    .map(line => line.trim())
+                    .filter(line => /^[A-Z]:\\/i.test(line));
+                if (drives.length > 0) resolve(drives);
+                else resolve(['C:\\']);
             });
         });
     });
