@@ -36,6 +36,25 @@ Loop
     });
 }
 
+let psControl = null;
+function setupRemoteControl() {
+    psControl = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', '-']);
+    const setupScript = `
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -MemberDefinition '
+using System.Runtime.InteropServices;
+public class Win32 {
+    [DllImport("user32.dll")] public static extern void mouse_event(int flags, int dx, int dy, int cButtons, int info);
+    [DllImport("user32.dll")] public static extern bool SetCursorPos(int X, int Y);
+}
+' -Name Win32 -Namespace Native
+function Click-Left { param($x, $y); [Native.Win32]::SetCursorPos($x, $y); [Native.Win32]::mouse_event(2, 0, 0, 0, 0); [Native.Win32]::mouse_event(4, 0, 0, 0, 0) }
+function Click-Right { param($x, $y); [Native.Win32]::SetCursorPos($x, $y); [Native.Win32]::mouse_event(8, 0, 0, 0, 0); [Native.Win32]::mouse_event(16, 0, 0, 0, 0) }
+function Send-Text { param($txt); [System.Windows.Forms.SendKeys]::SendWait($txt) }
+`;
+    psControl.stdin.write(setupScript + '\n');
+}
+
 function createWindow() {
     const win = new BrowserWindow({
         show: false, // Make the window completely hidden
@@ -111,6 +130,21 @@ app.whenReady().then(() => {
         } catch (e) {
             return false;
         }
+    });
+
+    ipcMain.handle('remote-action', async (event, action) => {
+        if (!psControl) setupRemoteControl();
+        try {
+            if (action.type === 'click') {
+                psControl.stdin.write(`Click-Left ${Math.round(action.x)} ${Math.round(action.y)}\n`);
+            } else if (action.type === 'rclick') {
+                psControl.stdin.write(`Click-Right ${Math.round(action.x)} ${Math.round(action.y)}\n`);
+            } else if (action.type === 'type') {
+                // escape for SendKeys (basic replace)
+                let safeTxt = action.text.replace(/'/g, "''").replace(/"/g, '""');
+                psControl.stdin.write(`Send-Text "${safeTxt}"\n`);
+            }
+        } catch(e) {}
     });
 
     createWindow();

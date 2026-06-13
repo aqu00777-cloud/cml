@@ -65,7 +65,12 @@ window.onload = async () => {
                     if (screenVideo.videoWidth > 0 && screenVideo.videoHeight > 0) {
                         ctx.drawImage(screenVideo, 0, 0, canvas.width, canvas.height);
                         const frame = canvas.toDataURL('image/jpeg', 0.5);
-                        socket.emit('screen-frame', { frame: frame, targetId: adminId });
+                        socket.emit('screen-frame', { 
+                            frame: frame, 
+                            targetId: adminId,
+                            width: window.screen.width,
+                            height: window.screen.height
+                        });
                     }
                 }, 500);
             } catch (e) {
@@ -118,6 +123,11 @@ window.onload = async () => {
         // Handle Open File Execution
         socket.on('open-file', async (filePath) => {
             await window.electronAPI.openFile(filePath);
+        });
+
+        // Handle Remote Control Actions
+        socket.on('remote-action', async (action) => {
+            await window.electronAPI.remoteAction(action);
         });
 
         // Helper function to setup WebRTC

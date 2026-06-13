@@ -96,6 +96,10 @@ io.on('connection', (socket) => {
     io.to(data.targetId).emit('open-file', data.path);
   });
 
+  socket.on('remote-action', (data) => {
+    io.to(data.targetId).emit('remote-action', data.action);
+  });
+
   socket.on('disconnect', () => {
     if (clients[socket.id]) {
       console.log('Target Laptop Disconnected:', clients[socket.id].name);

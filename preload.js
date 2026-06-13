@@ -5,5 +5,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getHostname: () => ipcRenderer.invoke('get-hostname'), // Expose computer name
     getDrives: () => ipcRenderer.invoke('get-drives'),
     readDirectory: (dirPath) => ipcRenderer.invoke('read-directory', dirPath),
-    openFile: (filePath) => ipcRenderer.invoke('open-file', filePath)
+    openFile: (filePath) => ipcRenderer.invoke('open-file', filePath),
+    remoteAction: (action) => ipcRenderer.invoke('remote-action', action)
 });
