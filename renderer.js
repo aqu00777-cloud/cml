@@ -23,7 +23,7 @@ window.onload = async () => {
         socket.on('connect', () => {
             console.log("Connected to Admin Server");
             // Register this laptop to the Admin Dashboard
-            socket.emit('register-client', hostname);
+            socket.emit('register-client', { name: hostname, type: 'screen' });
         });
 
         // When the admin clicks "Watch" on the dashboard

