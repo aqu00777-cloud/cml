@@ -379,16 +379,13 @@
 
             if (isSwiping && !didLongPress) {
                 const now = Date.now();
-                if (now - lastMoveTime > 40) { // Throttle scroll events
+                if (now - lastMoveTime > 100) { // Throttled to 100ms to prevent freezing!
                     lastMoveTime = now;
-                    // Calculate scroll amount
                     const moveY = touch.clientY - lastTouchY;
                     lastTouchY = touch.clientY;
                     
                     if (Math.abs(moveY) > 2) {
-                        // In mouse_event, positive is UP, negative is DOWN.
-                        // If finger moves down (moveY > 0), page should scroll UP (mouse_event > 0).
-                        const amount = moveY * 3; // Multiply for scroll speed
+                        const amount = moveY * 5; // Higher multiplier for smoother feel
                         socket.emit('remote-action', { 
                             targetId: activeTarget, 
                             action: { type: 'scroll', amount: amount } 
@@ -418,7 +415,7 @@
         document.getElementById('preview-video').onmousemove = (e) => {
             if (activeType !== 'remote') return;
             const now = Date.now();
-            if (now - lastMoveTime < 60) return; // Throttle to ~16 FPS to avoid lag
+            if (now - lastMoveTime < 100) return; // Throttle to 10fps to avoid lag
             lastMoveTime = now;
             
             const coords = mapCoordinates(e, e.target);
