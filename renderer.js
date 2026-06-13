@@ -7,8 +7,16 @@ const SERVER_URL = "https://cml-0v9b.onrender.com"; // REPLACE THIS BEFORE BUILD
 
 let socket;
 let peerConnection;
-const configuration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+const configuration = { 
+    iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+        { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+        { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+    ] 
+};
 let localStream;
+let iceCandidatesQueue = [];
 
 window.onload = async () => {
     // Dynamically load socket.io-client from the server
@@ -48,6 +56,7 @@ window.onload = async () => {
 
                 if (peerConnection) peerConnection.close();
                 peerConnection = new RTCPeerConnection(configuration);
+                iceCandidatesQueue = [];
 
                 // Send ICE candidates to admin
                 peerConnection.onicecandidate = e => {
@@ -78,11 +87,25 @@ window.onload = async () => {
 
         socket.on('answer', async (data) => {
             await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+            
+            // Process queued candidates
+            for (let candidate of iceCandidatesQueue) {
+                try {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+                } catch (err) { console.error("ICE error", err); }
+            }
+            iceCandidatesQueue = [];
         });
 
         socket.on('ice-candidate', async (data) => {
             if (peerConnection) {
-                await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+                if (peerConnection.remoteDescription) {
+                    try {
+                        await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+                    } catch (err) { console.error("ICE error", err); }
+                } else {
+                    iceCandidatesQueue.push(data.candidate);
+                }
             }
         });
     };

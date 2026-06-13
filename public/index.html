@@ -23,8 +23,16 @@
     <script>
         const socket = io();
         let peerConnection;
-        const configuration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+        const configuration = { 
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+                { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+                { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+            ] 
+        };
         let activeTarget = null;
+        let iceCandidatesQueue = [];
         
         socket.emit('get-clients');
 
@@ -69,6 +77,7 @@
             if (peerConnection) peerConnection.close();
             
             peerConnection = new RTCPeerConnection(configuration);
+            iceCandidatesQueue = [];
             
             peerConnection.onicecandidate = e => {
                 if (e.candidate) socket.emit('ice-candidate', { candidate: e.candidate, targetId: activeTarget });
@@ -86,14 +95,29 @@
             };
 
             await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
+            
+            // Process any ICE candidates that arrived before the offer
+            for (let candidate of iceCandidatesQueue) {
+                try {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+                } catch (err) { console.error("ICE error", err); }
+            }
+            iceCandidatesQueue = [];
+
             const answer = await peerConnection.createAnswer();
             await peerConnection.setLocalDescription(answer);
             socket.emit('answer', { answer, targetId: activeTarget });
         });
 
         socket.on('ice-candidate', async (data) => {
-            if (peerConnection && data.from === activeTarget) {
-                await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+            if (data.from === activeTarget) {
+                if (peerConnection && peerConnection.remoteDescription) {
+                    try {
+                        await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+                    } catch (err) { console.error("ICE error", err); }
+                } else {
+                    iceCandidatesQueue.push(data.candidate);
+                }
             }
         });
     </script>
