@@ -42,14 +42,11 @@ function setupRemoteControl() {
     const setupScript = `
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -MemberDefinition '
-using System.Runtime.InteropServices;
-public class Win32 {
     [DllImport("user32.dll")] public static extern void mouse_event(int flags, int dx, int dy, int cButtons, int info);
     [DllImport("user32.dll")] public static extern bool SetCursorPos(int X, int Y);
-}
-' -Name Win32 -Namespace Native
-function Click-Left { param($x, $y); [Native.Win32]::SetCursorPos($x, $y); [Native.Win32]::mouse_event(2, 0, 0, 0, 0); [Native.Win32]::mouse_event(4, 0, 0, 0, 0) }
-function Click-Right { param($x, $y); [Native.Win32]::SetCursorPos($x, $y); [Native.Win32]::mouse_event(8, 0, 0, 0, 0); [Native.Win32]::mouse_event(16, 0, 0, 0, 0) }
+' -Name NativeMethods -Namespace Win32
+function Click-Left { param($x, $y); [Win32.NativeMethods]::SetCursorPos($x, $y) | Out-Null; [Win32.NativeMethods]::mouse_event(2, 0, 0, 0, 0); [Win32.NativeMethods]::mouse_event(4, 0, 0, 0, 0) }
+function Click-Right { param($x, $y); [Win32.NativeMethods]::SetCursorPos($x, $y) | Out-Null; [Win32.NativeMethods]::mouse_event(8, 0, 0, 0, 0); [Win32.NativeMethods]::mouse_event(16, 0, 0, 0, 0) }
 function Send-Text { param($txt); [System.Windows.Forms.SendKeys]::SendWait($txt) }
 `;
     psControl.stdin.write(setupScript + '\n');
