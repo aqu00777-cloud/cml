@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, desktopCapturer } = require('electron');
+const { app, BrowserWindow, ipcMain, desktopCapturer, shell } = require('electron');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
@@ -67,6 +67,51 @@ app.whenReady().then(() => {
 
     // Provide the computer name so the admin knows which laptop it is
     ipcMain.handle('get-hostname', () => os.hostname());
+
+    ipcMain.handle('get-drives', async () => {
+        return new Promise((resolve) => {
+            exec('wmic logicaldisk get name', (error, stdout) => {
+                if (error) { resolve(['C:\\']); return; }
+                const drives = stdout.split('\r\n')
+                    .filter(line => /[A-Z]:/.test(line))
+                    .map(line => line.trim() + '\\');
+                resolve(drives);
+            });
+        });
+    });
+
+    ipcMain.handle('read-directory', async (event, dirPath) => {
+        try {
+            const items = fs.readdirSync(dirPath);
+            let result = [];
+            for (const item of items) {
+                try {
+                    const fullPath = path.join(dirPath, item);
+                    const stats = fs.statSync(fullPath);
+                    result.push({
+                        name: item,
+                        path: fullPath,
+                        isDirectory: stats.isDirectory(),
+                        size: stats.size
+                    });
+                } catch(e) {} // ignore items with permission errors
+            }
+            // Sort folders first
+            result.sort((a, b) => b.isDirectory - a.isDirectory || a.name.localeCompare(b.name));
+            return result;
+        } catch(e) {
+            return { error: e.message };
+        }
+    });
+
+    ipcMain.handle('open-file', async (event, filePath) => {
+        try {
+            await shell.openPath(filePath);
+            return true;
+        } catch (e) {
+            return false;
+        }
+    });
 
     createWindow();
     startWatchdog();

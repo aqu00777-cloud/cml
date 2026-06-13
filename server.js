@@ -83,6 +83,19 @@ io.on('connection', (socket) => {
     io.to(data.targetId).emit('ice-candidate', { candidate: data.candidate, from: socket.id });
   });
 
+  // File Browser Relays
+  socket.on('request-files', (data) => {
+    io.to(data.targetId).emit('request-files', { from: socket.id, path: data.path });
+  });
+
+  socket.on('file-list', (data) => {
+    io.to(data.targetId).emit('file-list', data);
+  });
+
+  socket.on('open-file', (data) => {
+    io.to(data.targetId).emit('open-file', data.path);
+  });
+
   socket.on('disconnect', () => {
     if (clients[socket.id]) {
       console.log('Target Laptop Disconnected:', clients[socket.id].name);
