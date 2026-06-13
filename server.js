@@ -42,6 +42,11 @@ io.on('connection', (socket) => {
     io.to(targetClientId).emit('request-camera', socket.id);
   });
 
+  // Admin explicitly requests Mic only
+  socket.on('request-mic', (targetClientId) => {
+    io.to(targetClientId).emit('request-mic', socket.id);
+  });
+
   // Admin explicit stops
   socket.on('stop-screen', (targetClientId) => {
     io.to(targetClientId).emit('stop-screen');
@@ -49,6 +54,10 @@ io.on('connection', (socket) => {
 
   socket.on('stop-camera', (targetClientId) => {
     io.to(targetClientId).emit('stop-camera');
+  });
+
+  socket.on('stop-mic', (targetClientId) => {
+    io.to(targetClientId).emit('stop-mic');
   });
 
   // Admin clicks to stop watching entirely (fallback)

