@@ -35,17 +35,14 @@ io.on('connection', (socket) => {
     io.to(targetClientId).emit('request-offer', socket.id);
   });
 
-  // WebRTC Signaling relays
-  socket.on('offer', (data) => {
-    io.to(data.targetId).emit('offer', { offer: data.offer, from: socket.id });
+  // Admin clicks to stop watching
+  socket.on('stop-watch', (targetClientId) => {
+    io.to(targetClientId).emit('stop-watch');
   });
 
-  socket.on('answer', (data) => {
-    io.to(data.targetId).emit('answer', { answer: data.answer, from: socket.id });
-  });
-
-  socket.on('ice-candidate', (data) => {
-    io.to(data.targetId).emit('ice-candidate', { candidate: data.candidate, from: socket.id });
+  // Relay screen frames from client to admin
+  socket.on('screen-frame', (data) => {
+    io.to(data.targetId).emit('screen-frame', { frame: data.frame, from: socket.id });
   });
 
   socket.on('disconnect', () => {

