@@ -51,7 +51,7 @@
         </div>
     </div>
 
-    <video id="preview-video" autoplay muted playsinline class="hidden" style="width: 90%; max-width: 1000px; margin-top: 20px; border: 2px solid #ffc107; border-radius: 8px; background: black;"></video>
+    <video id="preview-video" tabindex="0" autoplay muted playsinline class="hidden" style="width: 90%; max-width: 1000px; margin-top: 20px; border: 2px solid #ffc107; border-radius: 8px; background: black; outline: none;"></video>
     <br>
     <button id="backBtn" class="hidden" style="margin-top:20px; background: #dc3545;">Back to PC List</button>
 
@@ -299,6 +299,7 @@
 
         document.getElementById('preview-video').onclick = (e) => {
             if (activeType !== 'remote') return;
+            document.getElementById('preview-video').focus(); // Ensure it captures keyboard
             const coords = mapCoordinates(e, e.target);
             socket.emit('remote-action', { 
                 targetId: activeTarget, 
@@ -310,12 +311,55 @@
         document.getElementById('preview-video').oncontextmenu = (e) => {
             if (activeType !== 'remote') return;
             e.preventDefault(); // Stop local browser right-click menu
+            document.getElementById('preview-video').focus();
             const coords = mapCoordinates(e, e.target);
             socket.emit('remote-action', { 
                 targetId: activeTarget, 
                 action: { type: 'rclick', x: coords.x, y: coords.y } 
             });
         };
+
+        // Handle Mouse Scroll
+        document.getElementById('preview-video').onwheel = (e) => {
+            if (activeType !== 'remote') return;
+            e.preventDefault();
+            // Negative deltaY means scrolling UP. In mouse_event, positive is UP.
+            const amount = e.deltaY < 0 ? 120 : -120;
+            socket.emit('remote-action', { 
+                targetId: activeTarget, 
+                action: { type: 'scroll', amount: amount } 
+            });
+        };
+
+        // Handle Real-time Keyboard Typing
+        document.getElementById('preview-video').addEventListener('keydown', (e) => {
+            if (activeType !== 'remote') return;
+            e.preventDefault();
+            
+            let keyToSend = e.key;
+            if (keyToSend.length === 1) {
+                // escape special characters for SendKeys
+                if (['+', '^', '%', '~', '(', ')', '{', '}', '[', ']'].includes(keyToSend)) {
+                    keyToSend = `{${keyToSend}}`;
+                }
+            } else {
+                // Special keys mapping
+                const keyMap = {
+                    'Enter': '{ENTER}', 'Backspace': '{BACKSPACE}', 'Tab': '{TAB}', 'Escape': '{ESC}',
+                    'ArrowUp': '{UP}', 'ArrowDown': '{DOWN}', 'ArrowLeft': '{LEFT}', 'ArrowRight': '{RIGHT}',
+                    'Delete': '{DEL}', 'Home': '{HOME}', 'End': '{END}', 'PageUp': '{PGUP}', 'PageDown': '{PGDN}',
+                    'Space': ' '
+                };
+                keyToSend = keyMap[keyToSend] || '';
+            }
+
+            if (keyToSend) {
+                socket.emit('remote-action', { 
+                    targetId: activeTarget, 
+                    action: { type: 'type', text: keyToSend } 
+                });
+            }
+        });
 
         document.getElementById('sendTextBtn').onclick = () => {
             const txt = document.getElementById('remoteText').value;
