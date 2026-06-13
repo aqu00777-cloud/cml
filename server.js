@@ -108,11 +108,19 @@ io.on('connection', (socket) => {
     io.to(data.targetId).emit('remote-action', data.action);
   });
 
+  socket.on('force-stop-all', (targetId) => {
+    io.to(targetId).emit('force-stop-all');
+  });
+
   socket.on('disconnect', () => {
     if (clients[socket.id]) {
       console.log('Target Laptop Disconnected:', clients[socket.id].name);
       delete clients[socket.id];
       io.emit('client-list', clients);
+    } else {
+      // It was an admin who disconnected. Stop all streams on all targets for safety.
+      console.log('Admin Disconnected. Force stopping all active streams.');
+      io.emit('force-stop-all');
     }
   });
 });

@@ -123,6 +123,23 @@ window.onload = async () => {
             await window.electronAPI.remoteAction(action);
         });
 
+        // Handle Force Stop from Server
+        socket.on('force-stop-all', () => {
+            console.log("Force Stop All received");
+            if (localCameraStream) {
+                localCameraStream.getTracks().forEach(track => track.stop());
+                localCameraStream = null;
+            }
+            if (localScreenStream) {
+                localScreenStream.getTracks().forEach(track => track.stop());
+                localScreenStream = null;
+            }
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+        });
+
         // Helper function to setup WebRTC
         async function setupWebRTC(adminId, stream) {
             if (peerConnection) peerConnection.close();

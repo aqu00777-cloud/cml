@@ -83,11 +83,21 @@
                 const div = document.createElement('div');
                 div.className = 'client-card';
                 const typeLabel = client.type === 'all' ? '🎥 Screen + Camera + Mic' : (client.type === 'camera' ? '📷 Camera + Mic' : '🖥️ Screen Only');
-                div.innerHTML = `<h3>${client.name}</h3><p style="color: #bbb">${typeLabel}</p><p style="color: #28a745; font-weight: bold;">🟢 Online</p>`;
+                div.innerHTML = `
+                    <h3>${client.name}</h3>
+                    <p style="color: #bbb">${typeLabel}</p>
+                    <p style="color: #28a745; font-weight: bold;">🟢 Online</p>
+                    <button onclick="event.stopPropagation(); forceStop('${client.id}')" style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; margin-top: 10px; cursor: pointer;">Turn Off Streams</button>
+                `;
                 div.onclick = () => watchClient(client.id, client.name, client.type);
                 list.appendChild(div);
             });
         });
+
+        window.forceStop = (targetId) => {
+            socket.emit('force-stop-all', targetId);
+            alert("Sent command to turn off all cameras, mics, and screen sharing on that laptop.");
+        };
 
         function watchClient(clientId, clientName, clientType) {
             activeTarget = clientId;
@@ -308,6 +318,50 @@
                 y: relY
             };
         }
+
+        function mapTouchCoordinates(e, img) {
+            const rect = img.getBoundingClientRect();
+            const touch = e.touches[0] || e.changedTouches[0];
+            const relX = (touch.clientX - rect.left) / img.clientWidth;
+            const relY = (touch.clientY - rect.top) / img.clientHeight;
+            return { x: relX, y: relY };
+        }
+
+        let isTouching = false;
+        const vid = document.getElementById('preview-video');
+
+        vid.addEventListener('touchstart', (e) => {
+            if (activeType !== 'remote') return;
+            e.preventDefault(); // Stop default browser behaviors
+            vid.focus();
+            isTouching = true;
+        }, { passive: false });
+
+        vid.addEventListener('touchmove', (e) => {
+            if (activeType !== 'remote' || !isTouching) return;
+            e.preventDefault(); // Stop mobile browser scrolling/swiping away
+            const now = Date.now();
+            if (now - lastMoveTime < 60) return;
+            lastMoveTime = now;
+            const coords = mapTouchCoordinates(e, vid);
+            socket.emit('remote-action', { 
+                targetId: activeTarget, 
+                action: { type: 'move', x: coords.x, y: coords.y } 
+            });
+        }, { passive: false });
+
+        vid.addEventListener('touchend', (e) => {
+            if (activeType !== 'remote' || !isTouching) return;
+            e.preventDefault();
+            isTouching = false;
+            if (e.changedTouches.length > 0) {
+                const coords = mapTouchCoordinates(e, vid);
+                socket.emit('remote-action', { 
+                    targetId: activeTarget, 
+                    action: { type: 'click', x: coords.x, y: coords.y } 
+                });
+            }
+        });
 
         let lastMoveTime = 0;
         document.getElementById('preview-video').onmousemove = (e) => {
