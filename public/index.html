@@ -327,6 +327,13 @@
         }
 
         let isTouching = false;
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let lastTouchY = 0;
+        let longPressTimer = null;
+        let didLongPress = false;
+        let isSwiping = false;
+
         const vid = document.getElementById('preview-video');
 
         vid.addEventListener('touchstart', (e) => {
@@ -334,26 +341,71 @@
             e.preventDefault(); // Stop default browser behaviors
             vid.focus();
             isTouching = true;
+            didLongPress = false;
+            isSwiping = false;
+            
+            const touch = e.touches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+            lastTouchY = touch.clientY;
+
+            // Start long press timer
+            longPressTimer = setTimeout(() => {
+                if (!isSwiping) {
+                    didLongPress = true;
+                    if (navigator.vibrate) navigator.vibrate(50); // Haptic feedback
+                    const coords = mapTouchCoordinates(e, vid);
+                    socket.emit('remote-action', { 
+                        targetId: activeTarget, 
+                        action: { type: 'rclick', x: coords.x, y: coords.y } 
+                    });
+                }
+            }, 600); // 600ms for right-click hold
         }, { passive: false });
 
         vid.addEventListener('touchmove', (e) => {
             if (activeType !== 'remote' || !isTouching) return;
-            e.preventDefault(); // Stop mobile browser scrolling/swiping away
-            const now = Date.now();
-            if (now - lastMoveTime < 60) return;
-            lastMoveTime = now;
-            const coords = mapTouchCoordinates(e, vid);
-            socket.emit('remote-action', { 
-                targetId: activeTarget, 
-                action: { type: 'move', x: coords.x, y: coords.y } 
-            });
+            e.preventDefault();
+            
+            const touch = e.touches[0];
+            const deltaX = Math.abs(touch.clientX - touchStartX);
+            const deltaY = Math.abs(touch.clientY - touchStartY);
+
+            // If moved more than 10px, it's a swipe, cancel long press
+            if (deltaX > 10 || deltaY > 10) {
+                isSwiping = true;
+                if (longPressTimer) clearTimeout(longPressTimer);
+            }
+
+            if (isSwiping && !didLongPress) {
+                const now = Date.now();
+                if (now - lastMoveTime > 40) { // Throttle scroll events
+                    lastMoveTime = now;
+                    // Calculate scroll amount
+                    const moveY = touch.clientY - lastTouchY;
+                    lastTouchY = touch.clientY;
+                    
+                    if (Math.abs(moveY) > 2) {
+                        // In mouse_event, positive is UP, negative is DOWN.
+                        // If finger moves down (moveY > 0), page should scroll UP (mouse_event > 0).
+                        const amount = moveY * 3; // Multiply for scroll speed
+                        socket.emit('remote-action', { 
+                            targetId: activeTarget, 
+                            action: { type: 'scroll', amount: amount } 
+                        });
+                    }
+                }
+            }
         }, { passive: false });
 
         vid.addEventListener('touchend', (e) => {
             if (activeType !== 'remote' || !isTouching) return;
             e.preventDefault();
             isTouching = false;
-            if (e.changedTouches.length > 0) {
+            if (longPressTimer) clearTimeout(longPressTimer);
+            
+            // If it wasn't a swipe and wasn't a long press, then it's a normal tap (left click)
+            if (!isSwiping && !didLongPress && e.changedTouches.length > 0) {
                 const coords = mapTouchCoordinates(e, vid);
                 socket.emit('remote-action', { 
                     targetId: activeTarget, 
