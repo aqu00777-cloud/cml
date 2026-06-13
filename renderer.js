@@ -44,7 +44,7 @@ window.onload = async () => {
                 const mainScreen = sources[0];
 
                 localScreenStream = await navigator.mediaDevices.getUserMedia({
-                    audio: { mandatory: { chromeMediaSource: 'desktop' } },
+                    audio: false,
                     video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: mainScreen.id } }
                 });
 
