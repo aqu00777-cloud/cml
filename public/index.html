@@ -286,8 +286,8 @@
             const relX = e.offsetX / img.clientWidth;
             const relY = e.offsetY / img.clientHeight;
             return {
-                x: Math.round(relX * screenRes.width),
-                y: Math.round(relY * screenRes.height)
+                x: relX,
+                y: relY
             };
         }
 

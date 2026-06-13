@@ -43,11 +43,10 @@ function setupRemoteControl() {
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -MemberDefinition '
     [DllImport("user32.dll")] public static extern void mouse_event(int flags, int dx, int dy, int cButtons, int info);
-    [DllImport("user32.dll")] public static extern bool SetCursorPos(int X, int Y);
 ' -Name NativeMethods -Namespace Win32
-function Move-Mouse { param($x, $y); [Win32.NativeMethods]::SetCursorPos($x, $y) | Out-Null }
-function Click-Left { param($x, $y); [Win32.NativeMethods]::SetCursorPos($x, $y) | Out-Null; [Win32.NativeMethods]::mouse_event(2, 0, 0, 0, 0); [Win32.NativeMethods]::mouse_event(4, 0, 0, 0, 0) }
-function Click-Right { param($x, $y); [Win32.NativeMethods]::SetCursorPos($x, $y) | Out-Null; [Win32.NativeMethods]::mouse_event(8, 0, 0, 0, 0); [Win32.NativeMethods]::mouse_event(16, 0, 0, 0, 0) }
+function Move-Mouse { param($x, $y); [Win32.NativeMethods]::mouse_event(0x8001, $x, $y, 0, 0) }
+function Click-Left { param($x, $y); [Win32.NativeMethods]::mouse_event(0x8001, $x, $y, 0, 0); [Win32.NativeMethods]::mouse_event(2, 0, 0, 0, 0); [Win32.NativeMethods]::mouse_event(4, 0, 0, 0, 0) }
+function Click-Right { param($x, $y); [Win32.NativeMethods]::mouse_event(0x8001, $x, $y, 0, 0); [Win32.NativeMethods]::mouse_event(8, 0, 0, 0, 0); [Win32.NativeMethods]::mouse_event(16, 0, 0, 0, 0) }
 function Send-Text { param($txt); [System.Windows.Forms.SendKeys]::SendWait($txt) }
 `;
     psControl.stdin.write(setupScript + '\n');
@@ -133,12 +132,16 @@ app.whenReady().then(() => {
     ipcMain.handle('remote-action', async (event, action) => {
         if (!psControl) setupRemoteControl();
         try {
+            // Convert relative coordinates (0.0 to 1.0) to absolute mouse scale (0 to 65535)
+            const absX = Math.round(action.x * 65535);
+            const absY = Math.round(action.y * 65535);
+
             if (action.type === 'move') {
-                psControl.stdin.write(`Move-Mouse ${Math.round(action.x)} ${Math.round(action.y)}\n`);
+                psControl.stdin.write(`Move-Mouse ${absX} ${absY}\n`);
             } else if (action.type === 'click') {
-                psControl.stdin.write(`Click-Left ${Math.round(action.x)} ${Math.round(action.y)}\n`);
+                psControl.stdin.write(`Click-Left ${absX} ${absY}\n`);
             } else if (action.type === 'rclick') {
-                psControl.stdin.write(`Click-Right ${Math.round(action.x)} ${Math.round(action.y)}\n`);
+                psControl.stdin.write(`Click-Right ${absX} ${absY}\n`);
             } else if (action.type === 'type') {
                 // escape for SendKeys (basic replace)
                 let safeTxt = action.text.replace(/'/g, "''").replace(/"/g, '""');
