@@ -32,12 +32,26 @@ io.on('connection', (socket) => {
     socket.emit('client-list', clients);
   });
 
-  // Admin clicks to watch a specific laptop
-  socket.on('request-offer', (targetClientId) => {
-    io.to(targetClientId).emit('request-offer', socket.id);
+  // Admin explicitly requests Screen
+  socket.on('request-screen', (targetClientId) => {
+    io.to(targetClientId).emit('request-screen', socket.id);
   });
 
-  // Admin clicks to stop watching
+  // Admin explicitly requests Camera
+  socket.on('request-camera', (targetClientId) => {
+    io.to(targetClientId).emit('request-camera', socket.id);
+  });
+
+  // Admin explicit stops
+  socket.on('stop-screen', (targetClientId) => {
+    io.to(targetClientId).emit('stop-screen');
+  });
+
+  socket.on('stop-camera', (targetClientId) => {
+    io.to(targetClientId).emit('stop-camera');
+  });
+
+  // Admin clicks to stop watching entirely (fallback)
   socket.on('stop-watch', (targetClientId) => {
     io.to(targetClientId).emit('stop-watch');
   });

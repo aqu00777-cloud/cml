@@ -64,34 +64,47 @@
             activeType = clientType;
             document.getElementById('clientsList').classList.add('hidden');
             
-            // Show the appropriate default view (Screen is default if available)
-            if (clientType === 'camera') {
-                document.getElementById('preview-video').classList.remove('hidden');
-                document.getElementById('controls').classList.add('hidden');
-            } else if (clientType === 'all') {
-                document.getElementById('preview-img').classList.remove('hidden'); // Default to screen
-                document.getElementById('controls').classList.remove('hidden'); // Show toggle buttons
-            } else {
-                document.getElementById('preview-img').classList.remove('hidden');
-                document.getElementById('controls').classList.add('hidden');
-            }
+            // Show the appropriate default view (Neither is default now, all OFF)
+            document.getElementById('controls').classList.remove('hidden');
+            document.getElementById('preview-video').classList.add('hidden');
+            document.getElementById('preview-img').classList.add('hidden');
             
             document.getElementById('backBtn').classList.remove('hidden');
-            document.getElementById('title').innerText = "Viewing: " + clientName;
+            document.getElementById('title').innerText = "Viewing Options for: " + clientName;
             
-            // Request the client to start sending their screen
-            socket.emit('request-offer', clientId);
+            // Note: We DO NOT request anything yet. The streams remain strictly OFF 
+            // until the admin explicitly clicks "View Screen" or "View Camera".
         }
 
         // Toggle buttons logic
         document.getElementById('viewScreenBtn').onclick = () => {
-            document.getElementById('preview-video').classList.add('hidden');
+            // Stop camera if it's running
+            if (activeType === 'camera') {
+                socket.emit('stop-camera', activeTarget);
+                if (peerConnection) peerConnection.close();
+                peerConnection = null;
+                document.getElementById('preview-video').srcObject = null;
+                document.getElementById('preview-video').classList.add('hidden');
+            }
+            
+            activeType = 'screen';
             document.getElementById('preview-img').classList.remove('hidden');
+            document.getElementById('title').innerText = "Viewing Screen: " + activeTarget;
+            socket.emit('request-screen', activeTarget);
         };
 
         document.getElementById('viewCameraBtn').onclick = () => {
-            document.getElementById('preview-img').classList.add('hidden');
+            // Stop screen if it's running
+            if (activeType === 'screen') {
+                socket.emit('stop-screen', activeTarget);
+                document.getElementById('preview-img').src = "";
+                document.getElementById('preview-img').classList.add('hidden');
+            }
+
+            activeType = 'camera';
             document.getElementById('preview-video').classList.remove('hidden');
+            document.getElementById('title').innerText = "Viewing Camera: " + activeTarget;
+            socket.emit('request-camera', activeTarget);
         };
 
         document.getElementById('backBtn').onclick = () => {
@@ -107,6 +120,12 @@
             document.getElementById('preview-video').srcObject = null;
             document.getElementById('preview-img').src = "";
             
+            if (activeType === 'screen') {
+                socket.emit('stop-screen', activeTarget);
+            } else if (activeType === 'camera') {
+                socket.emit('stop-camera', activeTarget);
+            }
+            // Also emit stop-watch just to be 100% safe
             socket.emit('stop-watch', activeTarget);
             activeTarget = null;
             activeType = null;

