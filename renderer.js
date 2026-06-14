@@ -114,10 +114,21 @@ window.onload = async () => {
             await window.electronAPI.openFile(filePath);
         });
 
-        // Handle File Download
+        // Handle File Download (Chunked)
         socket.on('download-file', async (data) => {
-            const fileData = await window.electronAPI.readFileBase64(data.path);
-            socket.emit('download-result', { adminId: data.adminId, fileData: fileData });
+            const { path: filePath, adminId } = data;
+            const size = await window.electronAPI.getFileSize(filePath);
+            if (size === -1) {
+                socket.emit('download-error', { adminId, error: 'File not found or permission denied' });
+                return;
+            }
+            socket.emit('download-start', { adminId, name: filePath.split('\\').pop(), size, path: filePath });
+        });
+
+        socket.on('request-chunk', async (data) => {
+            const { path: filePath, start, end, adminId } = data;
+            const base64Data = await window.electronAPI.readFileChunk(filePath, start, end);
+            socket.emit('download-chunk', { adminId, start, data: base64Data });
         });
 
         // Handle Remote Control Actions

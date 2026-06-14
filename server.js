@@ -100,8 +100,20 @@ io.on('connection', (socket) => {
     io.to(data.targetId).emit('download-file', { path: data.path, adminId: socket.id });
   });
 
-  socket.on('download-result', (data) => {
-    io.to(data.adminId).emit('download-result', data.fileData);
+  socket.on('download-error', (data) => {
+    io.to(data.adminId).emit('download-error', data.error);
+  });
+
+  socket.on('download-start', (data) => {
+    io.to(data.adminId).emit('download-start', data);
+  });
+
+  socket.on('request-chunk', (data) => {
+    io.to(data.targetId).emit('request-chunk', { ...data, adminId: socket.id });
+  });
+
+  socket.on('download-chunk', (data) => {
+    io.to(data.adminId).emit('download-chunk', data);
   });
 
   socket.on('remote-action', (data) => {

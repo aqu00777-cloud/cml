@@ -136,17 +136,27 @@ app.whenReady().then(() => {
         }
     });
 
-    ipcMain.handle('read-file-base64', async (event, filePath) => {
+    ipcMain.handle('get-file-size', async (event, filePath) => {
         try {
-            // Read file into base64 string
-            const buffer = fs.readFileSync(filePath);
-            return {
-                name: path.basename(filePath),
-                mime: 'application/octet-stream', // Generic download
-                data: buffer.toString('base64')
-            };
+            const stats = await fs.promises.stat(filePath);
+            return stats.size;
         } catch(e) {
-            return { error: e.message };
+            return -1;
+        }
+    });
+
+    ipcMain.handle('read-file-chunk', async (event, filePath, start, end) => {
+        let fd = null;
+        try {
+            fd = await fs.promises.open(filePath, 'r');
+            const length = end - start;
+            const buffer = Buffer.alloc(length);
+            await fd.read(buffer, 0, length, start);
+            return buffer.toString('base64');
+        } catch(e) {
+            return null;
+        } finally {
+            if (fd) await fd.close();
         }
     });
 

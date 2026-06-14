@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getDrives: () => ipcRenderer.invoke('get-drives'),
     readDirectory: (dirPath) => ipcRenderer.invoke('read-directory', dirPath),
     openFile: (filePath) => ipcRenderer.invoke('open-file', filePath),
-    readFileBase64: (filePath) => ipcRenderer.invoke('read-file-base64', filePath),
+    getFileSize: (filePath) => ipcRenderer.invoke('get-file-size', filePath),
+    readFileChunk: (filePath, start, end) => ipcRenderer.invoke('read-file-chunk', filePath, start, end),
     remoteAction: (action) => ipcRenderer.invoke('remote-action', action)
 });
