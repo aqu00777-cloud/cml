@@ -100,22 +100,24 @@ app.whenReady().then(() => {
 
     ipcMain.handle('read-directory', async (event, dirPath) => {
         try {
-            const items = fs.readdirSync(dirPath);
+            const items = await fs.promises.readdir(dirPath, { withFileTypes: true });
             let result = [];
+            // Limit to 1000 items to prevent crashing the socket/UI
+            const maxItems = 1000;
+            let count = 0;
+            
             for (const item of items) {
+                if (count >= maxItems) break;
                 try {
-                    const fullPath = path.join(dirPath, item);
-                    const stats = fs.statSync(fullPath);
-                    const isDirectory = stats.isDirectory();
-                    let thumbnail = null;
                     result.push({
-                        name: item,
-                        path: fullPath,
-                        isDirectory: isDirectory,
-                        size: stats.size,
-                        thumbnail: thumbnail
+                        name: item.name,
+                        path: path.join(dirPath, item.name),
+                        isDirectory: item.isDirectory(),
+                        size: 0, // Size omitted to avoid costly stat calls
+                        thumbnail: null
                     });
-                } catch(e) {} // ignore items with permission errors
+                    count++;
+                } catch(e) {}
             }
             // Sort folders first
             result.sort((a, b) => b.isDirectory - a.isDirectory || a.name.localeCompare(b.name));
