@@ -108,12 +108,6 @@ app.whenReady().then(() => {
                     const stats = fs.statSync(fullPath);
                     const isDirectory = stats.isDirectory();
                     let thumbnail = null;
-                    if (!isDirectory && item.match(/\.(jpg|jpeg|png|gif|webp)$/i) && stats.size < 5 * 1024 * 1024) {
-                        try {
-                            const buffer = fs.readFileSync(fullPath);
-                            thumbnail = `data:image/${item.split('.').pop()};base64,${buffer.toString('base64')}`;
-                        } catch(e) {}
-                    }
                     result.push({
                         name: item,
                         path: fullPath,

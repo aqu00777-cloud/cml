@@ -4,7 +4,7 @@ const http = require('http');
 const path = require('path');
 const server = http.createServer(app);
 const { Server } = require("socket.io");
-const io = new Server(server, { cors: { origin: "*" } });
+const io = new Server(server, { cors: { origin: "*" }, maxHttpBufferSize: 1e8 });
 
 // Serve Admin Dashboard from public folder
 app.use(express.static(path.join(__dirname, 'public')));
