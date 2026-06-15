@@ -113,7 +113,14 @@ app.whenReady().then(() => {
             const result = await Promise.all(slicedItems.map(async (item) => {
                 let thumbnail = null;
                 const fullPath = path.join(dirPath, item.name);
-                const isDir = item.isDirectory();
+                let isDir = item.isDirectory();
+                
+                if (item.isSymbolicLink()) {
+                    try {
+                        const stat = await fs.promises.stat(fullPath);
+                        isDir = stat.isDirectory();
+                    } catch(e) {} // If broken symlink, leave it as false
+                }
                 
                 if (!isDir) {
                     const ext = path.extname(item.name).toLowerCase();
