@@ -66,11 +66,11 @@
                 { urls: 'stun:stun.twilio.com:3478' },
                 { urls: 'stun:stun.miwifi.com:3478' },
                 // Public Free TURN Server (Note: This is public and can be slow/rate-limited)
-                // If screen sharing fails on 4G/different networks, you will need to create a free account
-                // at metered.ca and replace the credentials below.
-                { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-                { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-                { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+                // User's Private TURN server
+                { urls: 'turn:global.relay.metered.ca:80', username: 'db6f16796e7a81fc1ff597d7', credential: 'J/TvhDCBQfsuaG3e' },
+                { urls: 'turn:global.relay.metered.ca:80?transport=tcp', username: 'db6f16796e7a81fc1ff597d7', credential: 'J/TvhDCBQfsuaG3e' },
+                { urls: 'turn:global.relay.metered.ca:443', username: 'db6f16796e7a81fc1ff597d7', credential: 'J/TvhDCBQfsuaG3e' },
+                { urls: 'turns:global.relay.metered.ca:443?transport=tcp', username: 'db6f16796e7a81fc1ff597d7', credential: 'J/TvhDCBQfsuaG3e' }
             ] 
         };
         let activeTarget = null;
