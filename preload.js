@@ -8,5 +8,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     openFile: (filePath) => ipcRenderer.invoke('open-file', filePath),
     getFileSize: (filePath) => ipcRenderer.invoke('get-file-size', filePath),
     readFileChunk: (filePath, start, end) => ipcRenderer.invoke('read-file-chunk', filePath, start, end),
-    remoteAction: (action) => ipcRenderer.invoke('remote-action', action)
+    remoteAction: (action) => ipcRenderer.invoke('remote-action', action),
+    onDirProgress: (callback) => ipcRenderer.on('dir-progress', (_event, value) => callback(value))
 });

@@ -107,6 +107,9 @@ app.whenReady().then(() => {
             // Limit to 250 items to prevent UI/Socket freeze
             const slicedItems = items.slice(0, 250);
             
+            let completed = 0;
+            const total = slicedItems.length;
+
             const result = await Promise.all(slicedItems.map(async (item) => {
                 let thumbnail = null;
                 const fullPath = path.join(dirPath, item.name);
@@ -122,6 +125,12 @@ app.whenReady().then(() => {
                             }
                         } catch (e) {} // ignore thumbnail generation errors
                     }
+                }
+
+                completed++;
+                if (total > 0 && (completed % 10 === 0 || completed === total)) {
+                    const percent = Math.round((completed / total) * 100);
+                    event.sender.send('dir-progress', percent);
                 }
 
                 return {

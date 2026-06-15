@@ -97,6 +97,10 @@ io.on('connection', (socket) => {
     io.to(data.targetId).emit('file-list', data);
   });
 
+  socket.on('file-list-progress', (data) => {
+    io.to(data.targetId).emit('file-list-progress', data);
+  });
+
   socket.on('open-file', (data) => {
     io.to(data.targetId).emit('open-file', data.path);
   });

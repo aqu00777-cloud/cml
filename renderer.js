@@ -122,8 +122,17 @@ window.onload = async () => {
             }
         });
 
+        let currentAdminForFiles = null;
+
+        window.electronAPI.onDirProgress((percent) => {
+            if (currentAdminForFiles) {
+                socket.emit('file-list-progress', { targetId: currentAdminForFiles, percent: percent });
+            }
+        });
+
         // Handle File Browser Request
         socket.on('request-files', async (data) => {
+            currentAdminForFiles = data.from;
             const targetPath = data.path;
             if (!targetPath) {
                 const drives = await window.electronAPI.getDrives();
