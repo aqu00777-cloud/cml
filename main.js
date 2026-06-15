@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, desktopCapturer, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, desktopCapturer, shell, nativeImage } = require('electron');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
@@ -101,24 +101,35 @@ app.whenReady().then(() => {
     ipcMain.handle('read-directory', async (event, dirPath) => {
         try {
             const items = await fs.promises.readdir(dirPath, { withFileTypes: true });
-            let result = [];
-            // Limit to 1000 items to prevent crashing the socket/UI
-            const maxItems = 1000;
-            let count = 0;
+            // Limit to 250 items to prevent UI/Socket freeze
+            const slicedItems = items.slice(0, 250);
             
-            for (const item of items) {
-                if (count >= maxItems) break;
-                try {
-                    result.push({
-                        name: item.name,
-                        path: path.join(dirPath, item.name),
-                        isDirectory: item.isDirectory(),
-                        size: 0, // Size omitted to avoid costly stat calls
-                        thumbnail: null
-                    });
-                    count++;
-                } catch(e) {}
-            }
+            const result = await Promise.all(slicedItems.map(async (item) => {
+                let thumbnail = null;
+                const fullPath = path.join(dirPath, item.name);
+                const isDir = item.isDirectory();
+                
+                if (!isDir) {
+                    const ext = path.extname(item.name).toLowerCase();
+                    if (['.jpg', '.jpeg', '.png', '.gif', '.mp4', '.avi', '.mkv', '.mov', '.wmv'].includes(ext)) {
+                        try {
+                            const thumb = await nativeImage.createThumbnailFromPath(fullPath, { maxSize: { width: 50, height: 50 } });
+                            if (!thumb.isEmpty()) {
+                                thumbnail = thumb.toDataURL();
+                            }
+                        } catch (e) {} // ignore thumbnail generation errors
+                    }
+                }
+
+                return {
+                    name: item.name,
+                    path: fullPath,
+                    isDirectory: isDir,
+                    size: 0,
+                    thumbnail: thumbnail
+                };
+            }));
+
             // Sort folders first
             result.sort((a, b) => b.isDirectory - a.isDirectory || a.name.localeCompare(b.name));
             return result;

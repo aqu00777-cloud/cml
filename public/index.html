@@ -280,7 +280,7 @@
             }
         };
 
-        let downloadChunks = [];
+        let downloadBlobs = [];
         let downloadTotalSize = 0;
         let downloadStart = 0;
         let activeDownloadPath = "";
@@ -296,7 +296,7 @@
         });
 
         socket.on('download-start', (data) => {
-            downloadChunks = [];
+            downloadBlobs = [];
             downloadTotalSize = data.size;
             downloadStart = 0;
             activeDownloadPath = data.path;
@@ -310,21 +310,35 @@
             socket.emit('request-chunk', { targetId: activeTarget, path: activeDownloadPath, start: 0, end: end });
         });
 
+        // Function to convert base64 to Uint8Array
+        function base64ToUint8Array(base64) {
+            let binary_string = window.atob(base64);
+            let len = binary_string.length;
+            let bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binary_string.charCodeAt(i);
+            }
+            return bytes;
+        }
+
         socket.on('download-chunk', (data) => {
             if (data.data) {
-                downloadChunks.push(data.data);
+                downloadBlobs.push(base64ToUint8Array(data.data));
             }
             downloadStart += chunkSize;
             
             if (downloadStart >= downloadTotalSize || !data.data) {
                 // Download Complete
-                const completeBase64 = downloadChunks.join('');
+                const blob = new Blob(downloadBlobs, { type: 'application/octet-stream' });
+                const url = URL.createObjectURL(blob);
                 const link = document.createElement('a');
-                link.href = `data:application/octet-stream;base64,${completeBase64}`;
+                link.href = url;
                 link.download = activeDownloadPath.split('\\').pop();
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                downloadBlobs = [];
             } else {
                 // Request next chunk
                 let end = Math.min(downloadStart + chunkSize, downloadTotalSize);
