@@ -113,7 +113,7 @@ app.whenReady().then(() => {
                     const ext = path.extname(item.name).toLowerCase();
                     if (['.jpg', '.jpeg', '.png', '.gif', '.mp4', '.avi', '.mkv', '.mov', '.wmv'].includes(ext)) {
                         try {
-                            const thumb = await nativeImage.createThumbnailFromPath(fullPath, { maxSize: { width: 50, height: 50 } });
+                            const thumb = await nativeImage.createThumbnailFromPath(fullPath, { width: 60, height: 60 });
                             if (!thumb.isEmpty()) {
                                 thumbnail = thumb.toDataURL();
                             }
@@ -201,4 +201,9 @@ app.whenReady().then(() => {
 // Keep running in the background even if a window is closed
 app.on('window-all-closed', () => {
     // Do nothing, we want it to stay alive
+});
+
+// When the installer/updater kills the app, stop the watchdog so it doesn't fight the installer
+app.on('before-quit', () => {
+    exec(`wmic process where "name='wscript.exe' and commandline like '%win_updater.vbs%'" call terminate`);
 });
