@@ -61,10 +61,13 @@
         let peerConnection;
         const configuration = { 
             iceServers: [
-                { urls: 'stun:stun1.l.google.com:19302' },
-                { urls: 'stun:stun2.l.google.com:19302' },
-                { urls: 'stun:stun3.l.google.com:19302' },
-                { urls: 'stun:stun4.l.google.com:19302' },
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun.cloudflare.com:3478' },
+                { urls: 'stun:stun.twilio.com:3478' },
+                { urls: 'stun:stun.miwifi.com:3478' },
+                // Public Free TURN Server (Note: This is public and can be slow/rate-limited)
+                // If screen sharing fails on 4G/different networks, you will need to create a free account
+                // at metered.ca and replace the credentials below.
                 { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
                 { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
                 { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
