@@ -37,6 +37,11 @@ io.on('connection', (socket) => {
     io.to(targetClientId).emit('request-screen', socket.id);
   });
 
+  // Admin explicitly requests Screen + Mic
+  socket.on('request-screen-mic', (targetClientId) => {
+    io.to(targetClientId).emit('request-screen-mic', socket.id);
+  });
+
   // Admin explicitly requests Camera
   socket.on('request-camera', (targetClientId) => {
     io.to(targetClientId).emit('request-camera', socket.id);

