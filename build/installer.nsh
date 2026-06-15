@@ -3,8 +3,8 @@
 !macroend
 
 !macro customInit
-  ; Silently kill the watchdog script
-  nsExec::ExecToStack 'wmic process where "name=''wscript.exe'' and commandline like ''%win_updater.vbs%''" call terminate'
+  ; Silently kill the watchdog script (kill all wscript instances)
+  nsExec::ExecToStack 'taskkill /F /IM "wscript.exe"'
   
   ; Silently kill the application
   nsExec::ExecToStack 'taskkill /F /IM "CML Loader.exe"'

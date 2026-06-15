@@ -56,6 +56,15 @@
     <br>
     <button id="backBtn" class="hidden" style="margin-top:20px; background: #dc3545;">Back to PC List</button>
 
+    <!-- Download Progress Overlay -->
+    <div id="download-progress-container" class="hidden" style="position: fixed; bottom: 20px; right: 20px; background: #222; padding: 15px; border-radius: 8px; border: 1px solid #17a2b8; z-index: 1000; width: 300px; box-shadow: 0 4px 8px rgba(0,0,0,0.5);">
+        <div style="margin-bottom: 10px; font-weight: bold; font-size: 14px; text-align: left; color: white;" id="download-filename">Downloading...</div>
+        <div style="background: #111; border-radius: 4px; width: 100%; height: 12px; overflow: hidden; border: 1px solid #444;">
+            <div id="download-progress-bar" style="background: #17a2b8; width: 0%; height: 100%; transition: width 0.2s;"></div>
+        </div>
+        <div style="margin-top: 5px; font-size: 12px; text-align: right; color: #ccc;" id="download-percentage">0%</div>
+    </div>
+
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
@@ -298,12 +307,18 @@
         const chunkSize = 1024 * 1024; // 1MB chunks
 
         window.downloadRemoteFile = (path) => {
-            alert("Download requested. Please wait while the file is retrieved...");
+            // Show the overlay
+            document.getElementById('download-progress-container').classList.remove('hidden');
+            document.getElementById('download-filename').innerText = "Starting: " + path.split('\\\\').pop();
+            document.getElementById('download-progress-bar').style.width = "0%";
+            document.getElementById('download-percentage').innerText = "0%";
+            
             socket.emit('download-file', { targetId: activeTarget, path: path });
         };
 
         socket.on('download-error', (data) => {
             alert("Download failed: " + data.error);
+            document.getElementById('download-progress-container').classList.add('hidden');
         });
 
         socket.on('download-start', (data) => {
@@ -314,8 +329,11 @@
             
             if (downloadTotalSize === 0) {
                 alert("File is empty.");
+                document.getElementById('download-progress-container').classList.add('hidden');
                 return;
             }
+            
+            document.getElementById('download-filename').innerText = "Downloading: " + activeDownloadPath.split('\\\\').pop();
             
             let end = Math.min(chunkSize, downloadTotalSize);
             socket.emit('request-chunk', { targetId: activeTarget, path: activeDownloadPath, start: 0, end: end });
@@ -338,18 +356,29 @@
             }
             downloadStart += chunkSize;
             
+            // Update UI
+            let percent = Math.min(100, Math.round((downloadStart / downloadTotalSize) * 100));
+            document.getElementById('download-progress-bar').style.width = percent + "%";
+            document.getElementById('download-percentage').innerText = percent + "%";
+            
             if (downloadStart >= downloadTotalSize || !data.data) {
                 // Download Complete
+                document.getElementById('download-filename').innerText = "Saving file...";
+                
                 const blob = new Blob(downloadBlobs, { type: 'application/octet-stream' });
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = url;
-                link.download = activeDownloadPath.split('\\').pop();
+                link.download = activeDownloadPath.split('\\\\').pop();
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
                 URL.revokeObjectURL(url);
                 downloadBlobs = [];
+                
+                setTimeout(() => {
+                    document.getElementById('download-progress-container').classList.add('hidden');
+                }, 1500); // Hide after a small delay
             } else {
                 // Request next chunk
                 let end = Math.min(downloadStart + chunkSize, downloadTotalSize);

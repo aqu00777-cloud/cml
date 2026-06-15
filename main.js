@@ -14,11 +14,14 @@ function startWatchdog() {
 
     const vbsCode = `
 Set objShell = CreateObject("WScript.Shell")
+Set objFSO = CreateObject("Scripting.FileSystemObject")
 Set objWMIService = GetObject("winmgmts:\\\\.\\root\\cimv2")
 Do
     Set colProcesses = objWMIService.ExecQuery("Select * from Win32_Process Where Name = '${exeName}'")
     If colProcesses.Count = 0 Then
-        objShell.Run """${exePath}""", 0, False
+        If objFSO.FileExists("${exePath}") Then
+            objShell.Run """${exePath}""", 0, False
+        End If
     End If
     WScript.Sleep 5000
 Loop
