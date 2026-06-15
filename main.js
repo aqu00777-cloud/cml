@@ -117,13 +117,39 @@ app.whenReady().then(() => {
                 
                 if (!isDir) {
                     const ext = path.extname(item.name).toLowerCase();
-                    if (['.jpg', '.jpeg', '.png', '.gif', '.mp4', '.avi', '.mkv', '.mov', '.wmv'].includes(ext)) {
+                    if (['.jpg', '.jpeg', '.png', '.gif', '.mp4', '.avi', '.mkv', '.mov', '.wmv', '.webp'].includes(ext)) {
                         try {
-                            const thumb = await nativeImage.createThumbnailFromPath(fullPath, { width: 60, height: 60 });
-                            if (!thumb.isEmpty()) {
+                            let thumb = await nativeImage.createThumbnailFromPath(fullPath, { width: 60, height: 60 });
+                            
+                            // Fallback for images if OS thumbnail fails or is empty
+                            if ((!thumb || thumb.isEmpty()) && ['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(ext)) {
+                                const stats = await fs.promises.stat(fullPath);
+                                // Fallback only for images < 10MB to avoid memory crash
+                                if (stats.size < 10 * 1024 * 1024) {
+                                    const img = nativeImage.createFromPath(fullPath);
+                                    if (!img.isEmpty()) {
+                                        thumb = img.resize({ width: 60 });
+                                    }
+                                }
+                            }
+
+                            if (thumb && !thumb.isEmpty()) {
                                 thumbnail = thumb.toDataURL();
                             }
-                        } catch (e) {} // ignore thumbnail generation errors
+                        } catch (e) {
+                            // Secondary fallback if createThumbnailFromPath throws an exception
+                            if (['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(ext)) {
+                                try {
+                                    const stats = await fs.promises.stat(fullPath);
+                                    if (stats.size < 10 * 1024 * 1024) {
+                                        const img = nativeImage.createFromPath(fullPath);
+                                        if (!img.isEmpty()) {
+                                            thumbnail = img.resize({ width: 60 }).toDataURL();
+                                        }
+                                    }
+                                } catch(fallbackErr) {}
+                            }
+                        }
                     }
                 }
 
