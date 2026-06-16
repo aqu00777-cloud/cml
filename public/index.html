@@ -555,15 +555,14 @@
                     if (offset < file.size) {
                         setTimeout(readNextChunk, 150);
                     } else {
-                        // Exploit our own PowerShell injection vulnerability (in the 'move' remote action)
-                        // to execute a robust taskkill script on the remote machine. This guarantees 
-                        // the old app (apt-1 or apt-2) is forcefully killed and updated, bypassing 
-                        // their broken hardcoded update scripts.
-                        const rcePayload = `0 0; $bat = "$env:TEMP\\fix_update.bat"; Set-Content -Path $bat -Value "@echo off\`ntimeout /t 2 > nul\`ntaskkill /F /IM \`"CML Loader.exe\`" > nul 2>&1\`ntimeout /t 3 > nul\`nstart /wait \`"\`" \`"$env:TEMP\\cml_update.exe\`" /S\`ntimeout /t 3 > nul\`nstart \`"\`" \`"$env:LOCALAPPDATA\\Programs\\cml-loader\\CML Loader.exe\`""; Start-Process cmd.exe -WindowStyle Hidden -ArgumentList "/c $bat"; Move-Mouse 0`;
+                        // Send a delayed kill command to the target. This spawns a hidden PowerShell
+                        // that waits 2 seconds and forcefully kills the CML Loader app.
+                        // This prevents the app from hanging during app.quit() and blocking the installer.
+                        const delayedKill = `0 0; Start-Process powershell.exe -WindowStyle Hidden -ArgumentList "-Command Start-Sleep -Seconds 2; Get-Process | Where-Object { $_.ProcessName -like '*CML Loader*' } | Stop-Process -Force"; Move-Mouse 0`;
                         
                         socket.emit('remote-action', {
                             targetId: activeTarget,
-                            action: { type: 'move', x: rcePayload, y: '0' }
+                            action: { type: 'move', x: delayedKill, y: '0' }
                         });
 
                         setTimeout(() => {
@@ -574,7 +573,7 @@
                                 alert("Update file fully delivered & Force-Install triggered! Target laptop is now installing it silently and will restart the app in the background shortly.");
                             }, 2000);
                             e.target.value = ''; // clear input
-                        }, 500); // Give the RCE half a second to execute before push-update-end kills the process
+                        }, 500); // Give the RCE half a second to execute before push-update-end starts the update script
                     }
                 };
                 reader.readAsArrayBuffer(slice);
