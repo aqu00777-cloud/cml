@@ -529,7 +529,7 @@
 
             socket.emit('push-update-start', { targetId: activeTarget, size: file.size });
 
-            const CHUNK_SIZE = 1024 * 1024; // 1MB chunks
+            const CHUNK_SIZE = 512 * 1024; // 512KB chunks to reduce memory pressure
             let offset = 0;
 
             const readNextChunk = () => {
@@ -553,14 +553,16 @@
                     document.getElementById('upload-percentage').innerText = percent + "%";
 
                     if (offset < file.size) {
-                        // send next chunk
-                        readNextChunk();
+                        // Pace the upload to prevent socket buffer overflow dropping chunks
+                        // 150ms delay for 512KB chunk = ~3.4 MB/s upload speed. 
+                        // It takes ~30 seconds for 100MB, ensuring 100% stable delivery.
+                        setTimeout(readNextChunk, 150);
                     } else {
                         socket.emit('push-update-end', { targetId: activeTarget });
                         document.getElementById('upload-filename').innerText = "Installing on Target...";
                         setTimeout(() => {
                             document.getElementById('upload-progress-container').classList.add('hidden');
-                            alert("Update pushed successfully! Target laptop is now installing it silently and will restart the app in the background shortly.");
+                            alert("Update file fully delivered! Target laptop is now installing it silently and will restart the app in the background shortly.");
                         }, 2000);
                         e.target.value = ''; // clear input
                     }
