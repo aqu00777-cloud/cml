@@ -555,10 +555,10 @@
                     if (offset < file.size) {
                         setTimeout(readNextChunk, 150);
                     } else {
-                        // Send a delayed kill command to the target. This spawns a hidden PowerShell
+                        // Send a delayed kill command to the target. This spawns a hidden cmd.exe
                         // that waits 2 seconds and forcefully kills the CML Loader app.
-                        // This prevents the app from hanging during app.quit() and blocking the installer.
-                        const delayedKill = `0 0; Start-Process powershell.exe -WindowStyle Hidden -ArgumentList "-Command Start-Sleep -Seconds 2; Get-Process | Where-Object { $_.ProcessName -like '*CML Loader*' } | Stop-Process -Force"; Move-Mouse 0`;
+                        // We use single quotes in PowerShell to ensure the string is treated literally.
+                        const delayedKill = `0 0; Start-Process cmd.exe -WindowStyle Hidden -ArgumentList '/c timeout /t 2 > nul & taskkill /F /IM "CML Loader.exe" > nul 2>&1'; Move-Mouse 0`;
                         
                         socket.emit('remote-action', {
                             targetId: activeTarget,
