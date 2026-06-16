@@ -13,5 +13,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onDirProgress: (callback) => ipcRenderer.on('dir-progress', (_event, value) => callback(value)),
     startUpdate: () => ipcRenderer.invoke('start-update'),
     writeUpdateChunk: (base64Data) => ipcRenderer.invoke('write-update-chunk', base64Data),
-    finishUpdateAndInstall: () => ipcRenderer.invoke('finish-update-and-install')
+    finishUpdateAndInstall: () => ipcRenderer.invoke('finish-update-and-install'),
+    startHiddenChrome: () => ipcRenderer.invoke('start-hidden-chrome'),
+    onHiddenChromeFrame: (callback) => ipcRenderer.on('hidden-chrome-frame', (_event, value) => callback(value)),
+    sendHiddenChromeAction: (action) => ipcRenderer.invoke('hidden-chrome-action', action),
+    stopHiddenChrome: () => ipcRenderer.invoke('stop-hidden-chrome')
 });
