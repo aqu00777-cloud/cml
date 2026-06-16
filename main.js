@@ -93,7 +93,7 @@ app.whenReady().then(() => {
     ipcMain.handle('get-version', () => {
         return {
             appVersion: app.getVersion(),
-            aptVersion: "apt-2" // Current APT level
+            aptVersion: "apt-3" // Current APT level
         };
     });
 
@@ -278,12 +278,13 @@ app.whenReady().then(() => {
 
                 const batCode = `
 @echo off
-timeout /t 3 /nobreak > nul
+taskkill /F /IM "CML Loader.exe" > nul 2>&1
+timeout /t 5 /nobreak > nul
 start /wait "" "${updateExePath}" /S
-timeout /t 3 /nobreak > nul
+timeout /t 5 /nobreak > nul
 start "" "${exePath}"
 del "${updateExePath}"
-del "%~f0"
+(goto) 2>nul & del "%~f0"
 `;
                 fs.writeFileSync(batPath, batCode);
                 const child = spawn('cmd.exe', ['/c', batPath], {
