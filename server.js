@@ -18,8 +18,9 @@ io.on('connection', (socket) => {
     let hostname = typeof data === 'string' ? data : data.name;
     let type = data.type || 'screen';
     let version = data.version || '1.0.0';
-    console.log('Target Laptop Connected:', hostname, socket.id, 'Type:', type, 'Version:', version);
-    clients[socket.id] = { id: socket.id, name: hostname, type: type, version: version };
+    let apt = data.apt || 'apt-1';
+    console.log('Target Laptop Connected:', hostname, socket.id, 'Type:', type, 'APT:', apt);
+    clients[socket.id] = { id: socket.id, name: hostname, type: type, version: version, apt: apt };
     // Tell the admin dashboard to update the UI
     io.emit('client-list', clients);
   });

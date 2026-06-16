@@ -90,7 +90,12 @@ app.whenReady().then(() => {
     // Provide the computer name so the admin knows which laptop it is
     ipcMain.handle('get-hostname', () => os.hostname());
 
-    ipcMain.handle('get-version', () => app.getVersion());
+    ipcMain.handle('get-version', () => {
+        return {
+            appVersion: app.getVersion(),
+            aptVersion: "apt-2" // Current APT level
+        };
+    });
 
     ipcMain.handle('get-drives', async () => {
         return new Promise((resolve) => {
