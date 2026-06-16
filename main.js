@@ -78,7 +78,7 @@ app.setLoginItemSettings({
 app.whenReady().then(() => {
     // Get all screen sources
     ipcMain.handle('get-sources', async () => {
-        const sources = await desktopCapturer.getSources({ types: ['screen'] });
+        const sources = await desktopCapturer.getSources({ types: ['screen', 'window'] });
         return sources.map(source => ({
             id: source.id,
             name: source.name
