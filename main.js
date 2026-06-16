@@ -88,6 +88,8 @@ app.whenReady().then(() => {
     // Provide the computer name so the admin knows which laptop it is
     ipcMain.handle('get-hostname', () => os.hostname());
 
+    ipcMain.handle('get-version', () => app.getVersion());
+
     ipcMain.handle('get-drives', async () => {
         return new Promise((resolve) => {
             exec('powershell "[System.IO.DriveInfo]::GetDrives() | Select-Object -ExpandProperty Name"', (error, stdout) => {

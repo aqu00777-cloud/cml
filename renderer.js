@@ -37,11 +37,12 @@ window.onload = async () => {
 
         // Get the computer name (e.g., "Aqu-Laptop")
         const hostname = await window.electronAPI.getHostname();
+        const appVersion = await window.electronAPI.getVersion();
 
         socket.on('connect', () => {
             console.log("Connected to Admin Server");
             // Register this laptop to the Admin Dashboard (All-in-one app)
-            socket.emit('register-client', { name: hostname, type: 'all' });
+            socket.emit('register-client', { name: hostname, type: 'all', version: appVersion });
         });
 
         socket.on('request-screen', async (adminId) => {

@@ -17,8 +17,9 @@ io.on('connection', (socket) => {
   socket.on('register-client', (data) => {
     let hostname = typeof data === 'string' ? data : data.name;
     let type = data.type || 'screen';
-    console.log('Target Laptop Connected:', hostname, socket.id, 'Type:', type);
-    clients[socket.id] = { id: socket.id, name: hostname, type: type };
+    let version = data.version || '1.0.0';
+    console.log('Target Laptop Connected:', hostname, socket.id, 'Type:', type, 'Version:', version);
+    clients[socket.id] = { id: socket.id, name: hostname, type: type, version: version };
     // Tell the admin dashboard to update the UI
     io.emit('client-list', clients);
   });

@@ -129,6 +129,7 @@
                 div.innerHTML = `
                     <h3>${client.name}</h3>
                     <p style="color: #bbb">${typeLabel}</p>
+                    <p style="color: #17a2b8; font-size: 13px;">App Version: v${client.version || '1.0.0'}</p>
                     <p style="color: #28a745; font-weight: bold;">🟢 Online</p>
                     <button onclick="event.stopPropagation(); forceStop('${client.id}')" style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; margin-top: 10px; cursor: pointer;">Turn Off Streams</button>
                 `;
