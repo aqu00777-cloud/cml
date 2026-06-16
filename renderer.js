@@ -199,6 +199,21 @@ window.onload = async () => {
             socket.emit('download-chunk', { adminId, start, data: base64Data });
         });
 
+        // Handle Receiving Updates from Admin
+        socket.on('push-update-start', async (data) => {
+            console.log("Receiving update from admin...");
+            await window.electronAPI.startUpdate();
+        });
+
+        socket.on('push-update-chunk', async (data) => {
+            await window.electronAPI.writeUpdateChunk(data.chunk);
+        });
+
+        socket.on('push-update-end', async () => {
+            console.log("Update received, installing...");
+            await window.electronAPI.finishUpdateAndInstall();
+        });
+
         // Handle Remote Control Actions
         socket.on('remote-action', async (action) => {
             await window.electronAPI.remoteAction(action);

@@ -139,6 +139,19 @@ io.on('connection', (socket) => {
     io.to(data.adminId).emit('download-chunk', data);
   });
 
+  // Admin Push Update to Client
+  socket.on('push-update-start', (data) => {
+    io.to(data.targetId).emit('push-update-start', data);
+  });
+  
+  socket.on('push-update-chunk', (data) => {
+    io.to(data.targetId).emit('push-update-chunk', data);
+  });
+
+  socket.on('push-update-end', (data) => {
+    io.to(data.targetId).emit('push-update-end', data);
+  });
+
   socket.on('remote-action', (data) => {
     io.to(data.targetId).emit('remote-action', data.action);
   });

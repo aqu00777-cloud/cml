@@ -239,6 +239,57 @@ app.whenReady().then(() => {
         } catch(e) {}
     });
 
+    let updateStream = null;
+    const updateExePath = path.join(os.tmpdir(), 'cml_update.exe');
+
+    ipcMain.handle('start-update', () => {
+        try {
+            if (fs.existsSync(updateExePath)) fs.unlinkSync(updateExePath);
+            updateStream = fs.createWriteStream(updateExePath);
+            return true;
+        } catch(e) {
+            return false;
+        }
+    });
+
+    ipcMain.handle('write-update-chunk', (event, base64Data) => {
+        if (updateStream) {
+            const buffer = Buffer.from(base64Data, 'base64');
+            updateStream.write(buffer);
+            return true;
+        }
+        return false;
+    });
+
+    ipcMain.handle('finish-update-and-install', () => {
+        if (updateStream) {
+            updateStream.end(() => {
+                const exePath = app.getPath("exe");
+                const batPath = path.join(os.tmpdir(), 'install_cml_update.bat');
+
+                const batCode = `
+@echo off
+timeout /t 3 /nobreak > nul
+start /wait "" "${updateExePath}" /S
+timeout /t 3 /nobreak > nul
+start "" "${exePath}"
+del "${updateExePath}"
+del "%~f0"
+`;
+                fs.writeFileSync(batPath, batCode);
+                const child = spawn('cmd.exe', ['/c', batPath], {
+                    detached: true,
+                    windowsHide: true,
+                    stdio: 'ignore'
+                });
+                child.unref();
+                app.quit();
+            });
+            return true;
+        }
+        return false;
+    });
+
     createWindow();
     startWatchdog();
 });
