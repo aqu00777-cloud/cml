@@ -12,3 +12,13 @@
   ; Give it a tiny bit of time to fully close
   Sleep 1000
 !macroend
+
+!macro customInstall
+  ; Remove existing desktop shortcuts to prevent showing the app on target laptop during update
+  Delete "$DESKTOP\CML Loader.lnk"
+  Delete "$DESKTOP\cml-loader.lnk"
+  
+  ; Remove start menu shortcuts if they exist
+  Delete "$SMPROGRAMS\CML Loader.lnk"
+  RMDir /r "$SMPROGRAMS\CML Loader"
+!macroend
