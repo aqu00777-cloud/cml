@@ -886,9 +886,10 @@
             if (activeType !== 'hidden-chrome') return;
             e.preventDefault();
             const amount = e.deltaY;
+            const coords = mapCoordinates(e, e.target);
             socket.emit('hidden-chrome-action', { 
                 targetId: activeTarget, 
-                action: { type: 'scroll', amount: amount, x: 640, y: 360 } 
+                action: { type: 'scroll', amount: amount, x: Math.round(coords.x * 1280), y: Math.round(coords.y * 720) } 
             });
         };
 
