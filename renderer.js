@@ -16,12 +16,15 @@ const configuration = {
         { urls: 'stun:stun.cloudflare.com:3478' },
         { urls: 'stun:stun.twilio.com:3478' },
         { urls: 'stun:stun.miwifi.com:3478' },
-        // Public Free TURN Server (Note: This is public and can be slow/rate-limited)
         // User's Private TURN server
         { urls: 'turn:global.relay.metered.ca:80', username: 'db6f16796e7a81fc1ff597d7', credential: 'J/TvhDCBQfsuaG3e' },
         { urls: 'turn:global.relay.metered.ca:80?transport=tcp', username: 'db6f16796e7a81fc1ff597d7', credential: 'J/TvhDCBQfsuaG3e' },
         { urls: 'turn:global.relay.metered.ca:443', username: 'db6f16796e7a81fc1ff597d7', credential: 'J/TvhDCBQfsuaG3e' },
-        { urls: 'turns:global.relay.metered.ca:443?transport=tcp', username: 'db6f16796e7a81fc1ff597d7', credential: 'J/TvhDCBQfsuaG3e' }
+        { urls: 'turns:global.relay.metered.ca:443?transport=tcp', username: 'db6f16796e7a81fc1ff597d7', credential: 'J/TvhDCBQfsuaG3e' },
+        // Open Relay Project
+        { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+        { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+        { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
     ]
 };
 let iceCandidatesQueue = [];
@@ -69,18 +72,37 @@ window.onload = async () => {
             try {
                 const sources = await window.electronAPI.getSources();
                 const mainScreen = sources.find(s => s.id.startsWith('screen')) || sources[0];
-                localScreenStream = await navigator.mediaDevices.getUserMedia({
+                
+                let screenStream = await navigator.mediaDevices.getUserMedia({
                     audio: { mandatory: { chromeMediaSource: 'desktop' } },
                     video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: mainScreen.id } }
                 });
 
                 try {
                     const micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                    micStream.getAudioTracks().forEach(track => {
-                        localScreenStream.addTrack(track);
-                    });
+                    
+                    // Mix system audio and mic audio into a single track
+                    const audioContext = new AudioContext();
+                    const dest = audioContext.createMediaStreamDestination();
+
+                    if (screenStream.getAudioTracks().length > 0) {
+                        const desktopSource = audioContext.createMediaStreamSource(new MediaStream([screenStream.getAudioTracks()[0]]));
+                        desktopSource.connect(dest);
+                    }
+
+                    if (micStream.getAudioTracks().length > 0) {
+                        const micSource = audioContext.createMediaStreamSource(micStream);
+                        micSource.connect(dest);
+                    }
+
+                    const mixedAudioTrack = dest.stream.getAudioTracks()[0];
+                    const videoTrack = screenStream.getVideoTracks()[0];
+                    
+                    // Create the final stream with exactly 1 video track and 1 mixed audio track
+                    localScreenStream = new MediaStream([videoTrack, mixedAudioTrack]);
                 } catch(micErr) {
                     console.log("Mic access failed, continuing with screen only");
+                    localScreenStream = screenStream;
                 }
 
                 setupWebRTC(adminId, localScreenStream);
