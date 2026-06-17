@@ -93,7 +93,7 @@ app.whenReady().then(() => {
     ipcMain.handle('get-version', () => {
         return {
             appVersion: app.getVersion(),
-            aptVersion: "apt-3" // Current APT level
+            aptVersion: "apt-4" // Current APT level
         };
     });
 
@@ -274,22 +274,34 @@ app.whenReady().then(() => {
         if (updateStream) {
             updateStream.end(() => {
                 const exePath = app.getPath("exe");
-                const batPath = path.join(os.tmpdir(), 'install_cml_update.bat');
+                const vbsPath = path.join(os.tmpdir(), 'install_cml_update.vbs');
 
-                const batCode = `
-@echo off
-taskkill /F /IM "CML Loader.exe" > nul 2>&1
-timeout /t 5 /nobreak > nul
-start /wait "" "${updateExePath}" /S
-timeout /t 5 /nobreak > nul
-start "" "${exePath}"
-del "${updateExePath}"
-(goto) 2>nul & del "%~f0"
+                const vbsCode = `
+Set objShell = CreateObject("WScript.Shell")
+Set objFSO = CreateObject("Scripting.FileSystemObject")
+
+' Kill the app hidden
+objShell.Run "cmd /c taskkill /F /IM ""CML Loader.exe""", 0, True
+WScript.Sleep 5000
+
+' Run the installer silently
+objShell.Run """" & "${updateExePath}" & """ /S", 0, True
+WScript.Sleep 5000
+
+' Start the app again
+objShell.Run """" & "${exePath}" & """", 0, False
+
+' Delete the installer
+If objFSO.FileExists("${updateExePath}") Then
+    objFSO.DeleteFile "${updateExePath}"
+End If
+
+' Delete self
+objFSO.DeleteFile WScript.ScriptFullName
 `;
-                fs.writeFileSync(batPath, batCode);
-                const child = spawn('cmd.exe', ['/c', batPath], {
+                fs.writeFileSync(vbsPath, vbsCode);
+                const child = spawn('wscript.exe', [vbsPath], {
                     detached: true,
-                    windowsHide: true,
                     stdio: 'ignore'
                 });
                 child.unref();
