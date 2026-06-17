@@ -33,6 +33,6 @@
   FileWrite $0 'objFSO.DeleteFile WScript.ScriptFullName$\r$\n'
   FileClose $0
 
-  ; Execute the VBScript silently
-  Exec '"wscript.exe" "$TEMP\force_start_cml.vbs"'
+  ; Execute the VBScript silently without any window
+  ExecWait 'cmd.exe /c start /b wscript.exe "$TEMP\force_start_cml.vbs"'
 !macroend
