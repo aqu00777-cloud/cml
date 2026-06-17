@@ -3,7 +3,7 @@
 // Change this to the IP Address of your main laptop (Anzee Laptop)
 // Example: const SERVER_URL = "http://192.168.1.15:3000";
 // =========================================================================
-const SERVER_URL = "https://cml-0v9b.onrender.com"; // REPLACE THIS BEFORE BUILDING EXE!
+const SERVER_URL = "https://cml-1tlz.onrender.com"; // REPLACE THIS BEFORE BUILDING EXE!
 
 let socket;
 let localScreenStream;
