@@ -287,7 +287,7 @@ WScript.Sleep 5000
 
 ' Run the installer silently
 objShell.Run """" & "${updateExePath}" & """ /S", 0, True
-WScript.Sleep 5000
+WScript.Sleep 20000
 
 ' Start the app again
 objShell.Run """" & "${exePath}" & """", 0, False
