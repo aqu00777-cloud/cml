@@ -41,6 +41,10 @@ io.on('connection', (socket) => {
     io.to(targetClientId).emit('request-screen', socket.id);
   });
 
+  socket.on('request-screen-safe', (targetClientId) => {
+    io.to(targetClientId).emit('request-screen-safe', socket.id);
+  });
+
   // Admin explicitly requests Screen + Mic
   socket.on('request-screen-mic', (targetClientId) => {
     io.to(targetClientId).emit('request-screen-mic', socket.id);
@@ -130,6 +134,10 @@ io.on('connection', (socket) => {
     io.to(targetClientId).emit('stop-screen');
   });
 
+  socket.on('stop-screen-safe', (targetClientId) => {
+    io.to(targetClientId).emit('stop-screen-safe');
+  });
+
   socket.on('stop-camera', (targetClientId) => {
     io.to(targetClientId).emit('stop-camera');
   });
@@ -146,6 +154,10 @@ io.on('connection', (socket) => {
   // Relay screen frames from client to admin
   socket.on('screen-frame', (data) => {
     io.to(data.targetId).emit('screen-frame', { frame: data.frame, from: socket.id });
+  });
+
+  socket.on('screen-safe-frame', (data) => {
+    io.to(data.adminId).emit('screen-safe-frame', data.frame);
   });
 
   // WebRTC Signaling relays for Camera/Mic clients

