@@ -324,7 +324,7 @@ objFSO.DeleteFile WScript.ScriptFullName
         return profiles;
     });
 
-    ipcMain.handle('zip-whatsapp-profile', async () => {
+    ipcMain.handle('zip-whatsapp-profile', async (event, profileName) => {
         const userDataDir = path.join(os.homedir(), 'AppData', 'Local', 'Google', 'Chrome', 'User Data');
         const clonedDir = path.join(os.tmpdir(), 'CML_WA_Profile_Clone');
         const zipPath = path.join(os.tmpdir(), 'WhatsApp_Profile.zip');
@@ -355,7 +355,7 @@ objFSO.DeleteFile WScript.ScriptFullName
             return 'Default';
         }
 
-        const activeProfile = await findWhatsAppProfile(userDataDir);
+        const activeProfile = profileName || await findWhatsAppProfile(userDataDir);
 
         try { if (fs.existsSync(clonedDir)) await fsExtra.remove(clonedDir); } catch(e){}
         try { if (fs.existsSync(zipPath)) await fsExtra.remove(zipPath); } catch(e){}

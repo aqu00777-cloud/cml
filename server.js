@@ -95,8 +95,12 @@ io.on('connection', (socket) => {
   });
 
   // Zip Profile
-  socket.on('request-zip-whatsapp', (targetClientId) => {
-    io.to(targetClientId).emit('request-zip-whatsapp', socket.id);
+  socket.on('request-zip-whatsapp', (data) => {
+    if (typeof data === 'string') {
+        io.to(data).emit('request-zip-whatsapp', socket.id);
+    } else {
+        io.to(data.targetId).emit('request-zip-whatsapp', { adminId: socket.id, profileName: data.profileName });
+    }
   });
 
   socket.on('whatsapp-zip-ready', (data) => {

