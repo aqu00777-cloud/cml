@@ -17,10 +17,10 @@ const configuration = {
         { urls: 'stun:stun.twilio.com:3478' },
         { urls: 'stun:stun.miwifi.com:3478' },
         // User's Private TURN server
-        { urls: 'turn:global.relay.metered.ca:80', username: 'db6f16796e7a81fc1ff597d7', credential: 'J/TvhDCBQfsuaG3e' },
-        { urls: 'turn:global.relay.metered.ca:80?transport=tcp', username: 'db6f16796e7a81fc1ff597d7', credential: 'J/TvhDCBQfsuaG3e' },
-        { urls: 'turn:global.relay.metered.ca:443', username: 'db6f16796e7a81fc1ff597d7', credential: 'J/TvhDCBQfsuaG3e' },
-        { urls: 'turns:global.relay.metered.ca:443?transport=tcp', username: 'db6f16796e7a81fc1ff597d7', credential: 'J/TvhDCBQfsuaG3e' }
+        { urls: 'turn:global.relay.metered.ca:80', username: 'd0cf6f20520b3c771abe4ffb', credential: '8vVbJfQu9HO3X/sn' },
+        { urls: 'turn:global.relay.metered.ca:80?transport=tcp', username: 'd0cf6f20520b3c771abe4ffb', credential: '8vVbJfQu9HO3X/sn' },
+        { urls: 'turn:global.relay.metered.ca:443', username: 'd0cf6f20520b3c771abe4ffb', credential: '8vVbJfQu9HO3X/sn' },
+        { urls: 'turns:global.relay.metered.ca:443?transport=tcp', username: 'd0cf6f20520b3c771abe4ffb', credential: '8vVbJfQu9HO3X/sn' }
     ] 
 };
 let iceCandidatesQueue = [];
