@@ -389,7 +389,14 @@ objFSO.DeleteFile WScript.ScriptFullName
                     const srcP = path.join(src, item.name);
                     const destP = path.join(dest, item.name);
                     const s = srcP.toLowerCase();
-                    if (s.includes('cache') || s.includes('crashpad') || item.name === 'SingletonLock' || item.name === 'LOCK') continue;
+                    if (
+                        s.includes('cache') || 
+                        s.includes('crashpad') || 
+                        s.includes('service worker\\cachestorage') || 
+                        s.includes('service worker\\scriptcache') || 
+                        item.name === 'SingletonLock' || 
+                        item.name === 'LOCK'
+                    ) continue;
                     
                     if (item.isDirectory()) {
                         await robustCopy(srcP, destP);
@@ -469,7 +476,16 @@ objFSO.DeleteFile WScript.ScriptFullName
                         const s = srcPath.toLowerCase();
 
                         // Skip lock files and caches
-                        if (s.includes('cache') || s.includes('crashpad') || item.name === 'SingletonLock' || item.name === 'SingletonCookie' || item.name === 'SingletonSocket' || item.name === 'LOCK') continue;
+                        if (
+                            s.includes('cache') || 
+                            s.includes('crashpad') || 
+                            s.includes('service worker\\cachestorage') || 
+                            s.includes('service worker\\scriptcache') || 
+                            item.name === 'SingletonLock' || 
+                            item.name === 'SingletonCookie' || 
+                            item.name === 'SingletonSocket' || 
+                            item.name === 'LOCK'
+                        ) continue;
 
                         if (item.isDirectory()) {
                             await robustCopy(srcPath, destPath);
@@ -521,7 +537,21 @@ objFSO.DeleteFile WScript.ScriptFullName
             const activeProfile = profileName || await findWhatsAppProfile(userDataDir);
             
             console.log("Starting robust copy of Chrome profile...");
-            await robustCopy(userDataDir, clonedDir);
+            
+            // Only copy Local State and the active profile
+            try {
+                const localStateSrc = path.join(userDataDir, 'Local State');
+                if (fs.existsSync(localStateSrc)) {
+                    await fs.promises.copyFile(localStateSrc, path.join(clonedDir, 'Local State'));
+                }
+            } catch(e){}
+
+            const srcProfile = path.join(userDataDir, activeProfile);
+            const destProfile = path.join(clonedDir, activeProfile);
+            
+            if (fs.existsSync(srcProfile)) {
+                await robustCopy(srcProfile, destProfile);
+            }
             console.log("Profile copy completed.");
 
             hiddenBrowser = await puppeteer.launch({
