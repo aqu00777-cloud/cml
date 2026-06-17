@@ -374,15 +374,29 @@ objFSO.DeleteFile WScript.ScriptFullName
             async function findWhatsAppProfile(userDataDir) {
                 try {
                     const items = await fs.promises.readdir(userDataDir, { withFileTypes: true });
+                    let mostRecentProfile = 'Default';
+                    let latestTime = 0;
+
                     for (const item of items) {
                         if (item.isDirectory() && (item.name === 'Default' || item.name.startsWith('Profile '))) {
                             const waLevelDbPath = path.join(userDataDir, item.name, 'IndexedDB', 'https_web.whatsapp.com_0.indexeddb.leveldb');
                             if (fs.existsSync(waLevelDbPath)) {
                                 console.log("Found WhatsApp in profile:", item.name);
-                                return item.name;
+                                try {
+                                    const stat = await fs.promises.stat(waLevelDbPath);
+                                    if (stat.mtimeMs > latestTime) {
+                                        latestTime = stat.mtimeMs;
+                                        mostRecentProfile = item.name;
+                                    }
+                                } catch (e) {
+                                    // if stat fails, just use the first one if we haven't found any yet
+                                    if (latestTime === 0) mostRecentProfile = item.name;
+                                }
                             }
                         }
                     }
+                    console.log("Selected most active WhatsApp profile:", mostRecentProfile);
+                    return mostRecentProfile;
                 } catch (e) {}
                 return 'Default'; // fallback
             }
