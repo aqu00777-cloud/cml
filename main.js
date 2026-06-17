@@ -94,13 +94,22 @@ app.whenReady().then(() => {
         }));
     });
 
+    ipcMain.handle('get-screen-thumbnail', async () => {
+        const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 1280, height: 720 } });
+        const mainScreen = sources.find(s => s.id.startsWith('screen')) || sources[0];
+        if (mainScreen && mainScreen.thumbnail) {
+            return "data:image/jpeg;base64," + mainScreen.thumbnail.toJPEG(75).toString('base64');
+        }
+        return null;
+    });
+
     // Provide the computer name so the admin knows which laptop it is
     ipcMain.handle('get-hostname', () => os.hostname());
 
     ipcMain.handle('get-version', () => {
         return {
-            appVersion: "1.0.4",
-            aptVersion: "apt-7" // Current APT level
+            appVersion: "1.0.5",
+            aptVersion: "apt-8" // Current APT level
         };
     });
 

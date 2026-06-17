@@ -168,10 +168,9 @@ window.onload = async () => {
             
             const startSafeStream = async () => {
                 try {
-                    const sources = await window.electronAPI.getSources();
-                    const mainScreen = sources.find(s => s.id.startsWith('screen')) || sources[0];
-                    if (mainScreen && mainScreen.thumbnail) {
-                        socket.emit('screen-safe-frame', { adminId, frame: mainScreen.thumbnail });
+                    const base64Frame = await window.electronAPI.getScreenThumbnail();
+                    if (base64Frame) {
+                        socket.emit('screen-safe-frame', { adminId, frame: base64Frame });
                     }
                 } catch(e) {
                     console.error("Safe mode frame err", e);
