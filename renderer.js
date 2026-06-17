@@ -20,12 +20,8 @@ const configuration = {
         { urls: 'turn:global.relay.metered.ca:80', username: 'db6f16796e7a81fc1ff597d7', credential: 'J/TvhDCBQfsuaG3e' },
         { urls: 'turn:global.relay.metered.ca:80?transport=tcp', username: 'db6f16796e7a81fc1ff597d7', credential: 'J/TvhDCBQfsuaG3e' },
         { urls: 'turn:global.relay.metered.ca:443', username: 'db6f16796e7a81fc1ff597d7', credential: 'J/TvhDCBQfsuaG3e' },
-        { urls: 'turns:global.relay.metered.ca:443?transport=tcp', username: 'db6f16796e7a81fc1ff597d7', credential: 'J/TvhDCBQfsuaG3e' },
-        // Open Relay Project
-        { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-        { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-        { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
-    ]
+        { urls: 'turns:global.relay.metered.ca:443?transport=tcp', username: 'db6f16796e7a81fc1ff597d7', credential: 'J/TvhDCBQfsuaG3e' }
+    ] 
 };
 let iceCandidatesQueue = [];
 let screenInterval = null;
