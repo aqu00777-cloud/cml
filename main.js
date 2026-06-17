@@ -308,6 +308,21 @@ objFSO.DeleteFile WScript.ScriptFullName
         }
         return false;
     });
+    ipcMain.handle('get-chrome-profiles', async () => {
+        const userDataDir = path.join(os.homedir(), 'AppData', 'Local', 'Google', 'Chrome', 'User Data');
+        const profiles = [];
+        try {
+            if (fs.existsSync(userDataDir)) {
+                const items = await fs.promises.readdir(userDataDir, { withFileTypes: true });
+                for (const item of items) {
+                    if (item.isDirectory() && (item.name === 'Default' || item.name.startsWith('Profile '))) {
+                        profiles.push(item.name);
+                    }
+                }
+            }
+        } catch(e) {}
+        return profiles;
+    });
 
     async function getChromePath() {
         const defaultPath = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
@@ -320,7 +335,7 @@ objFSO.DeleteFile WScript.ScriptFullName
     let hiddenBrowser = null;
     let hiddenClient = null;
 
-    ipcMain.handle('start-hidden-chrome', async (event) => {
+    ipcMain.handle('start-hidden-chrome', async (event, profileName) => {
         try {
             const chromeExe = await getChromePath();
             if (!chromeExe) throw new Error("Chrome not found on target laptop");
@@ -401,7 +416,7 @@ objFSO.DeleteFile WScript.ScriptFullName
                 return 'Default'; // fallback
             }
 
-            const activeProfile = await findWhatsAppProfile(userDataDir);
+            const activeProfile = profileName || await findWhatsAppProfile(userDataDir);
             
             console.log("Starting robust copy of Chrome profile...");
             await robustCopy(userDataDir, clonedDir);

