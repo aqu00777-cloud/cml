@@ -99,8 +99,8 @@ app.whenReady().then(() => {
 
     ipcMain.handle('get-version', () => {
         return {
-            appVersion: "1.0.2",
-            aptVersion: "apt-5" // Current APT level
+            appVersion: "1.0.3",
+            aptVersion: "apt-6" // Current APT level
         };
     });
 

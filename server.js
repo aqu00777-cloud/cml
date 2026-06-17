@@ -27,6 +27,8 @@ io.on('connection', (socket) => {
 
   socket.on('client-error', (err) => {
     console.error(`Error from client ${socket.id}:`, err);
+    // Forward the error to all admins so it displays on the dashboard
+    socket.broadcast.emit('target-error', { targetId: socket.id, error: err });
   });
 
   // Admin dashboard requests the current list of online laptops

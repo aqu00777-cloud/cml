@@ -201,15 +201,13 @@
             }
         }
 
-        // Toggle buttons logic
         document.getElementById('viewScreenBtn').onclick = () => {
             if (activeType === 'screen') return;
             stopCurrentActive();
             activeType = 'screen';
             document.getElementById('preview-video').classList.remove('hidden');
-            // Unmute the video to hear the system sound!
             document.getElementById('preview-video').muted = false;
-            document.getElementById('title').innerText = "Viewing Screen: " + activeTarget;
+            document.getElementById('title').innerText = "Viewing Screen: " + activeTarget + " [Connecting...]";
             socket.emit('request-screen', activeTarget);
         };
 
@@ -219,7 +217,7 @@
             activeType = 'screen-mic';
             document.getElementById('preview-video').classList.remove('hidden');
             document.getElementById('preview-video').muted = false;
-            document.getElementById('title').innerText = "Viewing Screen + Mic: " + activeTarget;
+            document.getElementById('title').innerText = "Viewing Screen + Mic: " + activeTarget + " [Connecting...]";
             socket.emit('request-screen-mic', activeTarget);
         };
 
@@ -228,11 +226,10 @@
             stopCurrentActive();
             activeType = 'remote';
             document.getElementById('preview-video').classList.remove('hidden');
-            // Unmute for remote control too
             document.getElementById('preview-video').muted = false;
             document.getElementById('remote-tools').classList.remove('hidden');
-            document.getElementById('title').innerText = "Remote Controlling: " + activeTarget;
-            socket.emit('request-screen', activeTarget); // Remote uses screen feed
+            document.getElementById('title').innerText = "Remote Controlling: " + activeTarget + " [Connecting...]";
+            socket.emit('request-screen', activeTarget); 
         };
 
         document.getElementById('viewCameraBtn').onclick = () => {
@@ -962,6 +959,13 @@
             
             peerConnection.onconnectionstatechange = () => {
                 console.log("Connection state:", peerConnection.connectionState);
+                const title = document.getElementById('title');
+                if (peerConnection.connectionState === 'connected') {
+                    title.innerText = title.innerText.replace('[Connecting...]', '[Connected! 🟢]');
+                } else if (peerConnection.connectionState === 'failed') {
+                    title.innerText = title.innerText.replace(/\[.*\]/, '[Failed 🔴]');
+                    alert("Network connection failed! The target PC's firewall might be blocking the video stream.");
+                }
             };
             
             peerConnection.ontrack = e => {
@@ -970,7 +974,12 @@
                 // Only assign if it's not already assigned, to prevent AbortError
                 if (video.srcObject !== e.streams[0]) {
                     video.srcObject = e.streams[0];
-                    video.play().catch(err => console.error("Video play error:", err));
+                    video.onloadedmetadata = () => {
+                        video.play().catch(err => {
+                            console.error("Video play error:", err);
+                            alert("Video playback blocked by browser! Error: " + err.message + ". Please click anywhere on the page and try again.");
+                        });
+                    };
                 }
             };
 
