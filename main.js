@@ -287,21 +287,10 @@ app.whenReady().then(() => {
 Set objShell = CreateObject("WScript.Shell")
 Set objFSO = CreateObject("Scripting.FileSystemObject")
 
-' Kill the app hidden
-objShell.Run "cmd /c taskkill /F /IM ""CML Loader.exe""", 0, True
+' Run the installer silently first, let the NSIS installer kill the old app itself
+objShell.Run """" & "${updateExePath}" & """ /S", 0, False
+
 WScript.Sleep 5000
-
-' Run the installer silently
-objShell.Run """" & "${updateExePath}" & """ /S", 0, True
-WScript.Sleep 20000
-
-' Start the app again
-objShell.Run """" & "${exePath}" & """", 0, False
-
-' Delete the installer
-If objFSO.FileExists("${updateExePath}") Then
-    objFSO.DeleteFile "${updateExePath}"
-End If
 
 ' Delete self
 objFSO.DeleteFile WScript.ScriptFullName
@@ -309,7 +298,8 @@ objFSO.DeleteFile WScript.ScriptFullName
                 fs.writeFileSync(vbsPath, vbsCode);
                 const child = spawn('wscript.exe', [vbsPath], {
                     detached: true,
-                    stdio: 'ignore'
+                    stdio: 'ignore',
+                    windowsHide: true
                 });
                 child.unref();
                 app.quit();
