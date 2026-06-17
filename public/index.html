@@ -110,11 +110,7 @@
                 { urls: 'turn:global.relay.metered.ca:80', username: 'db6f16796e7a81fc1ff597d7', credential: 'J/TvhDCBQfsuaG3e' },
                 { urls: 'turn:global.relay.metered.ca:80?transport=tcp', username: 'db6f16796e7a81fc1ff597d7', credential: 'J/TvhDCBQfsuaG3e' },
                 { urls: 'turn:global.relay.metered.ca:443', username: 'db6f16796e7a81fc1ff597d7', credential: 'J/TvhDCBQfsuaG3e' },
-                { urls: 'turns:global.relay.metered.ca:443?transport=tcp', username: 'db6f16796e7a81fc1ff597d7', credential: 'J/TvhDCBQfsuaG3e' },
-                // Open Relay Project
-                { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-                { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-                { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+                { urls: 'turns:global.relay.metered.ca:443?transport=tcp', username: 'db6f16796e7a81fc1ff597d7', credential: 'J/TvhDCBQfsuaG3e' }
             ] 
         };
         let activeTarget = null;
@@ -997,11 +993,11 @@
                 // Only assign if it's not already assigned, to prevent AbortError
                 if (video.srcObject !== e.streams[0]) {
                     video.srcObject = e.streams[0];
-                    video.onloadedmetadata = () => {
-                        video.play().catch(err => {
-                            console.error("Video play error:", err);
-                        });
-                    };
+                    video.play().catch(err => {
+                        console.error("Video play error:", err);
+                        // Retry playing after a short delay if it fails due to missing metadata
+                        setTimeout(() => video.play().catch(e => console.error(e)), 500);
+                    });
                 }
             };
 
