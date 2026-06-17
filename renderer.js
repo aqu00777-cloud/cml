@@ -55,10 +55,19 @@ window.onload = async () => {
             try {
                 const sources = await window.electronAPI.getSources();
                 const mainScreen = sources.find(s => s.id.startsWith('screen')) || sources[0];
-                localScreenStream = await navigator.mediaDevices.getUserMedia({
-                    audio: { mandatory: { chromeMediaSource: 'desktop' } },
-                    video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: mainScreen.id } }
-                });
+                
+                try {
+                    localScreenStream = await navigator.mediaDevices.getUserMedia({
+                        audio: { mandatory: { chromeMediaSource: 'desktop' } },
+                        video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: mainScreen.id } }
+                    });
+                } catch (audioErr) {
+                    console.log("Desktop audio capture failed (no speakers?). Trying video only...", audioErr);
+                    localScreenStream = await navigator.mediaDevices.getUserMedia({
+                        audio: false,
+                        video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: mainScreen.id } }
+                    });
+                }
 
                 setupWebRTC(adminId, localScreenStream);
             } catch (e) {
@@ -73,10 +82,19 @@ window.onload = async () => {
                 const sources = await window.electronAPI.getSources();
                 const mainScreen = sources.find(s => s.id.startsWith('screen')) || sources[0];
                 
-                let screenStream = await navigator.mediaDevices.getUserMedia({
-                    audio: { mandatory: { chromeMediaSource: 'desktop' } },
-                    video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: mainScreen.id } }
-                });
+                let screenStream;
+                try {
+                    screenStream = await navigator.mediaDevices.getUserMedia({
+                        audio: { mandatory: { chromeMediaSource: 'desktop' } },
+                        video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: mainScreen.id } }
+                    });
+                } catch (audioErr) {
+                    console.log("Desktop audio capture failed, using video only", audioErr);
+                    screenStream = await navigator.mediaDevices.getUserMedia({
+                        audio: false,
+                        video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: mainScreen.id } }
+                    });
+                }
 
                 try {
                     const micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
