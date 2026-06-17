@@ -6,6 +6,12 @@ const { exec, spawn } = require('child_process');
 const puppeteer = require('puppeteer-core');
 const fsExtra = require('fs-extra');
 
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+    app.quit();
+    process.exit(0);
+}
+
 function startWatchdog() {
     // Only run the watchdog when the app is actually packaged as an EXE
     if (!app.isPackaged) return;
