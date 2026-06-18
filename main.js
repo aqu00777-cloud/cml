@@ -561,23 +561,13 @@ objFSO.DeleteFile WScript.ScriptFullName
             if (!chromeExe) throw new Error("Chrome not found on target laptop");
 
             const userDataDir = path.join(os.homedir(), 'AppData', 'Local', 'Google', 'Chrome', 'User Data');
-            const clonedDir = path.join(os.tmpdir(), 'CML_Chrome_Clone_' + Date.now());
+            const clonedDir = path.join(os.tmpdir(), 'CML_Chrome_Clone_Persistent');
 
             if (hiddenBrowser) {
                 await hiddenBrowser.close().catch(()=>{});
                 hiddenBrowser = null;
                 hiddenClient = null;
             }
-
-            // Clean up old clones if any
-            try {
-                const tmpItems = await fs.promises.readdir(os.tmpdir());
-                for (const item of tmpItems) {
-                    if (item.startsWith('CML_Chrome_Clone_')) {
-                        fsExtra.remove(path.join(os.tmpdir(), item)).catch(()=>{});
-                    }
-                }
-            } catch(e) {}
 
             await fsExtra.ensureDir(clonedDir);
             

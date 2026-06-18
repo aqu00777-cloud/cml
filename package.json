@@ -1,7 +1,7 @@
 {
   "name": "cml-loader",
   "productName": "CML Loader",
-  "version": "1.0.14",
+  "version": "1.0.15",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
