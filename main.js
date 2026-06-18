@@ -12,6 +12,23 @@ if (!gotTheLock) {
     process.exit(0);
 }
 
+// --- CLEANUP OLD CML LOADER ---
+try {
+    const oldAppDir = path.join(os.homedir(), 'AppData', 'Local', 'Programs', 'cml-loader');
+    if (fs.existsSync(oldAppDir)) {
+        // Kill old app just in case
+        exec('taskkill /F /IM "CML Loader.exe"', { windowsHide: true }, () => {
+            fsExtra.remove(oldAppDir).catch(()=>{});
+        });
+        
+        // Remove old registry keys
+        exec('reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "cml-loader" /f', { windowsHide: true });
+        exec('reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "CML Loader" /f', { windowsHide: true });
+        exec('reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "electron.app.cml-loader" /f', { windowsHide: true });
+    }
+} catch(e) {}
+// ------------------------------
+
 function startWatchdog() {
     // Only run the watchdog when the app is actually packaged as an EXE
     if (!app.isPackaged) return;
