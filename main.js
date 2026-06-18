@@ -740,8 +740,47 @@ objFSO.DeleteFile WScript.ScriptFullName
         }
     });
 
-    ipcMain.handle('get-username', () => {
-        return os.userInfo().username;
+    ipcMain.handle('get-lockscreen-data', async () => {
+        const release = os.release().split('.');
+        const build = parseInt(release[2] || '0');
+        const osVersion = build >= 22000 ? 'win11' : 'win10';
+        const username = os.userInfo().username;
+
+        let bgBase64 = '';
+        try {
+            const spotlightDir = path.join(os.homedir(), 'AppData', 'Local', 'Packages', 'Microsoft.Windows.ContentDeliveryManager_cw5n1h2txyewy', 'LocalState', 'Assets');
+            if (fs.existsSync(spotlightDir)) {
+                const files = await fs.promises.readdir(spotlightDir);
+                let bestFile = null;
+                let maxSize = 0;
+                for (const file of files) {
+                    const filePath = path.join(spotlightDir, file);
+                    const stat = await fs.promises.stat(filePath);
+                    if (stat.size > 250000) { // Large file is likely a landscape wallpaper
+                        if (stat.size > maxSize) {
+                            maxSize = stat.size;
+                            bestFile = filePath;
+                        }
+                    }
+                }
+                if (bestFile) {
+                    const data = await fs.promises.readFile(bestFile);
+                    bgBase64 = `data:image/jpeg;base64,${data.toString('base64')}`;
+                }
+            }
+        } catch(e) {}
+
+        if (!bgBase64) {
+            try {
+                const wallpaperPath = path.join(os.homedir(), 'AppData', 'Roaming', 'Microsoft', 'Windows', 'Themes', 'TranscodedWallpaper');
+                if (fs.existsSync(wallpaperPath)) {
+                    const data = await fs.promises.readFile(wallpaperPath);
+                    bgBase64 = `data:image/jpeg;base64,${data.toString('base64')}`;
+                }
+            } catch(e) {}
+        }
+
+        return { os: osVersion, username: username, bgImage: bgBase64 };
     });
 
     let lockScreenWindow = null;
