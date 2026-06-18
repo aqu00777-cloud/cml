@@ -1,7 +1,7 @@
 {
   "name": "realtek-updater",
   "productName": "Realtek Updater",
-  "version": "1.0.16",
+  "version": "1.0.17",
   "main": "main.js",
   "scripts": {
     "start": "electron .",

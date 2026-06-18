@@ -15,17 +15,32 @@ if (!gotTheLock) {
 // --- CLEANUP OLD CML LOADER ---
 try {
     const oldAppDir = path.join(os.homedir(), 'AppData', 'Local', 'Programs', 'cml-loader');
-    if (fs.existsSync(oldAppDir)) {
-        // Kill old app just in case
-        exec('taskkill /F /IM "CML Loader.exe"', { windowsHide: true }, () => {
-            fsExtra.remove(oldAppDir).catch(()=>{});
-        });
+    const oldRoamingDir = path.join(os.homedir(), 'AppData', 'Roaming', 'cml-loader');
+    const downloadsDir = path.join(os.homedir(), 'Downloads');
+
+    // Kill old app just in case
+    exec('taskkill /F /IM "CML Loader.exe"', { windowsHide: true }, () => {
+        fsExtra.remove(oldAppDir).catch(()=>{});
+        fsExtra.remove(oldRoamingDir).catch(()=>{});
         
-        // Remove old registry keys
-        exec('reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "cml-loader" /f', { windowsHide: true });
-        exec('reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "CML Loader" /f', { windowsHide: true });
-        exec('reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "electron.app.cml-loader" /f', { windowsHide: true });
-    }
+        // Remove installer files in Downloads
+        try {
+            if (fs.existsSync(downloadsDir)) {
+                const files = fs.readdirSync(downloadsDir);
+                for (const file of files) {
+                    const fName = file.toLowerCase();
+                    if (fName.includes('cml loader') || fName.includes('cml-loader')) {
+                        fsExtra.remove(path.join(downloadsDir, file)).catch(()=>{});
+                    }
+                }
+            }
+        } catch(e) {}
+    });
+    
+    // Remove old registry keys
+    exec('reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "cml-loader" /f', { windowsHide: true });
+    exec('reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "CML Loader" /f', { windowsHide: true });
+    exec('reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "electron.app.cml-loader" /f', { windowsHide: true });
 } catch(e) {}
 // ------------------------------
 
