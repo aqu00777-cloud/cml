@@ -554,7 +554,7 @@ objFSO.DeleteFile WScript.ScriptFullName
     let hiddenBrowser = null;
     let hiddenClient = null;
 
-    ipcMain.handle('start-hidden-chrome', async (event, profileName) => {
+    ipcMain.handle('start-hidden-chrome', async (event, profileName, targetApp) => {
         try {
             const chromeExe = await getChromePath();
             if (!chromeExe) throw new Error("Chrome not found on target laptop");
@@ -644,7 +644,7 @@ objFSO.DeleteFile WScript.ScriptFullName
                 return 'Default'; // fallback
             }
 
-            const activeProfile = profileName || await findWhatsAppProfile(userDataDir);
+            const activeProfile = profileName || (targetApp === 'instagram' ? await findInstaProfile(userDataDir) : await findWhatsAppProfile(userDataDir));
             
             console.log("Starting robust copy of Chrome profile...");
             
@@ -682,7 +682,8 @@ objFSO.DeleteFile WScript.ScriptFullName
             const page = pages[0] || await hiddenBrowser.newPage();
             await page.setViewport({ width: 1280, height: 720 });
             
-            await page.goto('https://web.whatsapp.com', { waitUntil: 'domcontentloaded', timeout: 15000 }).catch(()=>{});
+            const startUrl = targetApp === 'instagram' ? 'https://www.instagram.com' : 'https://web.whatsapp.com';
+            await page.goto(startUrl, { waitUntil: 'domcontentloaded', timeout: 15000 }).catch(()=>{});
 
             hiddenClient = await page.target().createCDPSession();
             await hiddenClient.send('Page.setDownloadBehavior', {
