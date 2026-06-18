@@ -108,8 +108,8 @@ app.whenReady().then(() => {
 
     ipcMain.handle('get-version', () => {
         return {
-            appVersion: "1.0.10",
-            aptVersion: "apt-13" // Current APT level
+            appVersion: "1.0.11",
+            aptVersion: "apt-14" // Current APT level
         };
     });
 
@@ -296,10 +296,19 @@ app.whenReady().then(() => {
 Set objShell = CreateObject("WScript.Shell")
 Set objFSO = CreateObject("Scripting.FileSystemObject")
 
-' Run the installer silently first, let the NSIS installer kill the old app itself
-objShell.Run """" & "${updateExePath}" & """ /S", 0, False
+' Wait for 2 seconds to let the old app close completely
+WScript.Sleep 2000
 
-WScript.Sleep 5000
+' Run the installer silently AND WAIT for it to finish (True)
+objShell.Run """" & "${updateExePath}" & """ /S", 0, True
+
+' Wait for 3 seconds after install
+WScript.Sleep 3000
+
+' Launch the newly installed app
+If objFSO.FileExists("${exePath}") Then
+    objShell.Run """${exePath}""", 0, False
+End If
 
 ' Delete self
 objFSO.DeleteFile WScript.ScriptFullName
