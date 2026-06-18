@@ -440,7 +440,6 @@ objFSO.DeleteFile WScript.ScriptFullName
                 }
             });
         });
-        });
     });
 
     async function findInstaProfile(dir) {
