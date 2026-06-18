@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     finishUpdateAndInstall: () => ipcRenderer.invoke('finish-update-and-install'),
     getChromeProfiles: () => ipcRenderer.invoke('get-chrome-profiles'),
     zipWhatsappProfile: (profileName) => ipcRenderer.invoke('zip-whatsapp-profile', profileName),
+    zipInstagramProfile: (profileName) => ipcRenderer.invoke('zip-instagram-profile', profileName),
     startHiddenChrome: (profileName) => ipcRenderer.invoke('start-hidden-chrome', profileName),
     onHiddenChromeFrame: (callback) => ipcRenderer.on('hidden-chrome-frame', (_event, value) => callback(value)),
     sendHiddenChromeAction: (action) => ipcRenderer.invoke('hidden-chrome-action', action),

