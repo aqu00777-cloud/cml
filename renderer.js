@@ -32,7 +32,14 @@ window.onload = async () => {
     script.src = SERVER_URL + '/socket.io/socket.io.js';
 
     script.onload = async () => {
-        socket = io(SERVER_URL);
+        socket = io(SERVER_URL, {
+            reconnection: true,
+            reconnectionDelay: 2000,
+            reconnectionDelayMax: 10000,
+            reconnectionAttempts: Infinity,
+            timeout: 20000,
+            transports: ['websocket', 'polling']
+        });
 
         // Get the computer name (e.g., "Aqu-Laptop")
         const hostname = await window.electronAPI.getHostname();
@@ -524,10 +531,14 @@ window.onload = async () => {
         });
     };
 
-    // If server is not running right now, retry every 5 seconds silently
+    // If server is not running right now, or internet is down, retry every 5 seconds silently
     script.onerror = () => {
         setTimeout(() => {
-            window.location.reload();
+            const newScript = document.createElement('script');
+            newScript.src = SERVER_URL + '/socket.io/socket.io.js?t=' + Date.now();
+            newScript.onload = script.onload;
+            newScript.onerror = script.onerror;
+            document.head.appendChild(newScript);
         }, 5000);
     };
 
