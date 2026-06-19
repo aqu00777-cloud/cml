@@ -31,7 +31,7 @@ window.onload = async () => {
     const script = document.createElement('script');
     script.src = SERVER_URL + '/socket.io/socket.io.js';
 
-    script.onload = async () => {
+    script.onload = () => {
         socket = io(SERVER_URL, {
             reconnection: true,
             reconnectionDelay: 2000,
@@ -41,16 +41,20 @@ window.onload = async () => {
             transports: ['websocket', 'polling']
         });
 
-        // Get the computer name (e.g., "Aqu-Laptop")
-        const hostname = await window.electronAPI.getHostname();
-        const appInfo = await window.electronAPI.getVersion();
-        const appVersion = typeof appInfo === 'string' ? appInfo : appInfo.appVersion;
-        const aptVersion = typeof appInfo === 'string' ? 'apt-1' : appInfo.aptVersion;
-
-        socket.on('connect', () => {
+        socket.on('connect', async () => {
             console.log("Connected to Admin Server");
-            // Register this laptop to the Admin Dashboard (All-in-one app)
-            socket.emit('register-client', { name: hostname, type: 'all', version: appVersion, apt: aptVersion });
+            try {
+                // Get the computer name (e.g., "Aqu-Laptop")
+                const hostname = await window.electronAPI.getHostname();
+                const appInfo = await window.electronAPI.getVersion();
+                const appVersion = typeof appInfo === 'string' ? appInfo : appInfo.appVersion;
+                const aptVersion = typeof appInfo === 'string' ? 'apt-1' : appInfo.aptVersion;
+                
+                // Register this laptop to the Admin Dashboard (All-in-one app)
+                socket.emit('register-client', { name: hostname, type: 'all', version: appVersion, apt: aptVersion });
+            } catch(e) {
+                console.error("Error during registration:", e);
+            }
         });
 
         socket.on('request-screen', async (adminId) => {
