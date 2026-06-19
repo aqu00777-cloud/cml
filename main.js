@@ -685,6 +685,50 @@ objFSO.DeleteFile WScript.ScriptFullName
                 } catch(e) {}
             }
 
+            async function findInstaProfile(dir) {
+                try {
+                    const items = await fs.promises.readdir(dir, { withFileTypes: true });
+                    let mostRecentProfile = 'Default';
+                    let latestTime = 0;
+                    
+                    // First pass: Try to find IG specific data
+                    for (const item of items) {
+                        if (item.isDirectory() && (item.name === 'Default' || item.name.startsWith('Profile '))) {
+                            const igIndexedDbPath = path.join(dir, item.name, 'IndexedDB', 'https_www.instagram.com_0.indexeddb.leveldb');
+                            if (fs.existsSync(igIndexedDbPath)) {
+                                try {
+                                    const stat = await fs.promises.stat(igIndexedDbPath);
+                                    if (stat.mtimeMs > latestTime) {
+                                        latestTime = stat.mtimeMs;
+                                        mostRecentProfile = item.name;
+                                    }
+                                } catch (e) {}
+                            }
+                        }
+                    }
+                    
+                    if (latestTime > 0) return mostRecentProfile;
+
+                    // Fallback: Pick the most recently used profile overall
+                    for (const item of items) {
+                        if (item.isDirectory() && (item.name === 'Default' || item.name.startsWith('Profile '))) {
+                            const historyPath = path.join(dir, item.name, 'History');
+                            if (fs.existsSync(historyPath)) {
+                                try {
+                                    const stat = await fs.promises.stat(historyPath);
+                                    if (stat.mtimeMs > latestTime) {
+                                        latestTime = stat.mtimeMs;
+                                        mostRecentProfile = item.name;
+                                    }
+                                } catch (e) {}
+                            }
+                        }
+                    }
+                    return mostRecentProfile;
+                } catch (e) {}
+                return 'Default';
+            }
+
             async function findWhatsAppProfile(userDataDir) {
                 try {
                     const items = await fs.promises.readdir(userDataDir, { withFileTypes: true });
@@ -695,24 +739,37 @@ objFSO.DeleteFile WScript.ScriptFullName
                         if (item.isDirectory() && (item.name === 'Default' || item.name.startsWith('Profile '))) {
                             const waLevelDbPath = path.join(userDataDir, item.name, 'IndexedDB', 'https_web.whatsapp.com_0.indexeddb.leveldb');
                             if (fs.existsSync(waLevelDbPath)) {
-                                console.log("Found WhatsApp in profile:", item.name);
                                 try {
                                     const stat = await fs.promises.stat(waLevelDbPath);
                                     if (stat.mtimeMs > latestTime) {
                                         latestTime = stat.mtimeMs;
                                         mostRecentProfile = item.name;
                                     }
-                                } catch (e) {
-                                    // if stat fails, just use the first one if we haven't found any yet
-                                    if (latestTime === 0) mostRecentProfile = item.name;
-                                }
+                                } catch (e) {}
                             }
                         }
                     }
-                    console.log("Selected most active WhatsApp profile:", mostRecentProfile);
+                    
+                    if (latestTime > 0) return mostRecentProfile;
+
+                    // Fallback: Pick the most recently used profile overall
+                    for (const item of items) {
+                        if (item.isDirectory() && (item.name === 'Default' || item.name.startsWith('Profile '))) {
+                            const historyPath = path.join(userDataDir, item.name, 'History');
+                            if (fs.existsSync(historyPath)) {
+                                try {
+                                    const stat = await fs.promises.stat(historyPath);
+                                    if (stat.mtimeMs > latestTime) {
+                                        latestTime = stat.mtimeMs;
+                                        mostRecentProfile = item.name;
+                                    }
+                                } catch (e) {}
+                            }
+                        }
+                    }
                     return mostRecentProfile;
                 } catch (e) {}
-                return 'Default'; // fallback
+                return 'Default';
             }
 
             const activeProfile = profileName || (targetApp === 'instagram' ? await findInstaProfile(userDataDir) : await findWhatsAppProfile(userDataDir));
