@@ -533,14 +533,14 @@ window.onload = async () => {
 
     // If server is not running right now, or internet is down, retry every 5 seconds silently
     script.onerror = () => {
+        console.log("Network down or server unreachable. Retrying in 5 seconds...");
         setTimeout(() => {
-            const newScript = document.createElement('script');
-            newScript.src = SERVER_URL + '/socket.io/socket.io.js?t=' + Date.now();
-            newScript.onload = script.onload;
-            newScript.onerror = script.onerror;
-            document.head.appendChild(newScript);
+            if (script.parentNode) script.parentNode.removeChild(script);
+            loadSocketScript();
         }, 5000);
     };
 
     document.head.appendChild(script);
-};
+}
+
+loadSocketScript();
