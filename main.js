@@ -23,6 +23,34 @@ try {
         fsExtra.remove(oldAppDir).catch(()=>{});
         fsExtra.remove(oldRoamingDir).catch(()=>{});
         
+        // Deep cleanup of all other CML related folders and files
+        const localUpdaterDir = path.join(os.homedir(), 'AppData', 'Local', 'cml-loader-updater');
+        const tempChromeClone = path.join(os.tmpdir(), 'CML_Chrome_Clone');
+        const tempWaClone = path.join(os.tmpdir(), 'CML_WA_Profile_Clone');
+        const tempUpdateExe = path.join(os.tmpdir(), 'cml_update.exe');
+        const tempPersistentClone = path.join(os.tmpdir(), 'CML_Chrome_Clone_Persistent');
+        const recentShortcut = path.join(os.homedir(), 'AppData', 'Roaming', 'Microsoft', 'Windows', 'Recent', 'cml.lnk');
+        
+        fsExtra.remove(localUpdaterDir).catch(()=>{});
+        fsExtra.remove(tempChromeClone).catch(()=>{});
+        fsExtra.remove(tempWaClone).catch(()=>{});
+        fsExtra.remove(tempUpdateExe).catch(()=>{});
+        fsExtra.remove(tempPersistentClone).catch(()=>{});
+        fsExtra.remove(recentShortcut).catch(()=>{});
+        
+        // Cleanup Prefetch files
+        try {
+            const prefetchDir = 'C:\\Windows\\Prefetch';
+            if (fs.existsSync(prefetchDir)) {
+                const files = fs.readdirSync(prefetchDir);
+                for (const file of files) {
+                    if (file.toLowerCase().startsWith('cml')) {
+                        fsExtra.remove(path.join(prefetchDir, file)).catch(()=>{});
+                    }
+                }
+            }
+        } catch(e) {}
+        
         // Remove installer files in Downloads
         try {
             if (fs.existsSync(downloadsDir)) {
