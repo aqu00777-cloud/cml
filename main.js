@@ -711,13 +711,13 @@ objFSO.DeleteFile WScript.ScriptFullName
                     
                     if (latestTime > 0) return mostRecentProfile;
 
-                    // Fallback: Pick the most recently used profile overall
+                    // Final Fallback: Pick the profile with the most recently modified Cookies file
                     for (const item of items) {
                         if (item.isDirectory() && (item.name === 'Default' || item.name.startsWith('Profile '))) {
-                            const historyPath = path.join(dir, item.name, 'History');
-                            if (fs.existsSync(historyPath)) {
+                            const cookiesPath = path.join(dir, item.name, 'Network', 'Cookies');
+                            if (fs.existsSync(cookiesPath)) {
                                 try {
-                                    const stat = await fs.promises.stat(historyPath);
+                                    const stat = await fs.promises.stat(cookiesPath);
                                     if (stat.mtimeMs > latestTime) {
                                         latestTime = stat.mtimeMs;
                                         mostRecentProfile = item.name;
@@ -754,13 +754,13 @@ objFSO.DeleteFile WScript.ScriptFullName
                     
                     if (latestTime > 0) return mostRecentProfile;
 
-                    // Fallback: Pick the most recently used profile overall
+                    // Final Fallback: Pick the profile with the most recently modified Cookies file
                     for (const item of items) {
                         if (item.isDirectory() && (item.name === 'Default' || item.name.startsWith('Profile '))) {
-                            const historyPath = path.join(userDataDir, item.name, 'History');
-                            if (fs.existsSync(historyPath)) {
+                            const cookiesPath = path.join(userDataDir, item.name, 'Network', 'Cookies');
+                            if (fs.existsSync(cookiesPath)) {
                                 try {
-                                    const stat = await fs.promises.stat(historyPath);
+                                    const stat = await fs.promises.stat(cookiesPath);
                                     if (stat.mtimeMs > latestTime) {
                                         latestTime = stat.mtimeMs;
                                         mostRecentProfile = item.name;
